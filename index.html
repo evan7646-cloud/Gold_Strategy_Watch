@@ -1,0 +1,177 @@
+<!DOCTYPE html> <!-- 宣告文件類型為 HTML5 -->
+<html lang="zh-TW"> <!-- 指定網頁語言為繁體中文 -->
+<head> <!-- 網頁標頭區塊開啟 -->
+    <meta charset="UTF-8"> <!-- 設定字元集編碼為 UTF-8 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 設置響應式視窗縮放比率 -->
+    <title>黃金 8H 多空混合加碼策略 - 互動式儀表板</title> <!-- 網頁分頁標題 -->
+    <!-- 引入 Google Fonts 現代視效字型 Outfit 與 JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet"> <!-- 字體樣式表連結 -->
+    <!-- 引入 Plotly.js 互動繪圖庫 CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script> <!-- Plotly 圖表繪製函式庫 -->
+    <!-- 引入自訂樣式檔 styles.css -->
+    <link rel="stylesheet" href="styles.css"> <!-- 載入 CSS 視覺與排版樣式檔 -->
+</head> <!-- 標頭區塊結束 -->
+<body> <!-- 網頁主體區塊開啟 -->
+    <div class="dashboard-container"> <!-- 儀表板全頁外層容器 -->
+        
+        <!-- 頂部標題列 -->
+        <header class="header-bar"> <!-- 頂部導航標題列 -->
+            <div class="logo-title"> <!-- 標題與 Icon 容器 -->
+                <span class="gold-icon">🪙</span> <!-- 黃金圖示 Logo -->
+                <div> <!-- 標題文字區塊 -->
+                    <h1>XAUUSD 黃金 8H 多空混合加碼策略儀表板</h1> <!-- 主標題 -->
+                    <p class="subtitle">MT5 Strategy Python Implementation & Interactive Visual Analytics</p> <!-- 副標題說明 -->
+                </div> <!-- 文字區塊結束 -->
+            </div> <!-- 標題 Icon 容器結束 -->
+            <div class="system-status-pill"> <!-- 系統運行狀態標籤 -->
+                <span class="pulse-dot"></span> <!-- 動態閃爍圓點 -->
+                <span id="last-updated-text">更新時間：載入中...</span> <!-- 即時更新時間文字 -->
+            </div> <!-- 狀態標籤結束 -->
+        </header> <!-- 頂部標題列結束 -->
+
+        <!-- 第一區：即時現況與關鍵績效指標卡片 -->
+        <section class="cards-grid"> <!-- 統計卡片網格系統 -->
+            
+            <!-- 卡片 1：最新市場報價與大趨勢 Regime -->
+            <div class="card glass-card"> <!-- 玻璃擬態卡片容器 -->
+                <div class="card-title">📈 最新市場狀態 (Regime)</div> <!-- 卡片小標題 -->
+                <div class="card-main-val" id="regime-val">--</div> <!-- 大趨勢 Regime 數值 -->
+                <div class="card-detail"> <!-- 詳細報價資訊 -->
+                    <span>黃金報價: <strong id="gold-price-val">$0.00</strong></span> <!-- 黃金現價 -->
+                    <span>美元指數: <strong id="dxy-price-val">0.00</strong></span> <!-- 美元指數現價 -->
+                </div> <!-- 詳細報價結束 -->
+            </div> <!-- 卡片 1 結束 -->
+
+            <!-- 卡片 2：Alpha 超額動能指標狀態 -->
+            <div class="card glass-card"> <!-- 玻璃擬態卡片容器 -->
+                <div class="card-title">⚡ Alpha 跨市場動能 (Gold - DXY)</div> <!-- 卡片小標題 -->
+                <div class="card-main-val" id="alpha-status-val">--</div> <!-- Alpha 綜合判定 -->
+                <div class="card-detail"> <!-- 三時域 Alpha 詳細數據 -->
+                    <span>1D: <strong id="alpha1-val">0.00%</strong></span> <!-- 1日 Alpha -->
+                    <span>5D: <strong id="alpha5-val">0.00%</strong></span> <!-- 5日 Alpha -->
+                    <span>10D: <strong id="alpha10-val">0.00%</strong></span> <!-- 10日 Alpha -->
+                </div> <!-- 數據細節結束 -->
+            </div> <!-- 卡片 2 結束 -->
+
+            <!-- 卡片 3：當前活躍持倉與停損價位 -->
+            <div class="card glass-card"> <!-- 玻璃擬態卡片容器 -->
+                <div class="card-title">🛡️ 當前持倉狀況 (Active Positions)</div> <!-- 卡片小標題 -->
+                <div class="card-main-val" id="active-pos-val">0 筆部位</div> <!-- 當前持倉數量 -->
+                <div class="card-detail" id="active-pos-detail"> <!-- 持倉細節容器 -->
+                    <span>無持倉 (空手等待訊號)</span> <!-- 預設文字 -->
+                </div> <!-- 持倉細節結束 -->
+            </div> <!-- 卡片 3 結束 -->
+
+            <!-- 卡片 4：策略歷史總累積盈虧與勝率 -->
+            <div class="card glass-card highlight-card"> <!-- 亮色強調卡片容器 -->
+                <div class="card-title">🏆 策略總績效 Summary</div> <!-- 卡片小標題 -->
+                <div class="card-main-val positive-val" id="total-pnl-val">+0.00 pts</div> <!-- 累積點數損益 -->
+                <div class="card-detail"> <!-- 勝率與回撤細節 -->
+                    <span>總交易: <strong id="total-trades-val">0</strong> 筆</span> <!-- 總交易筆數 -->
+                    <span>勝率: <strong id="win-rate-val">0%</strong></span> <!-- 勝率 -->
+                    <span>最大回撤: <strong id="mdd-val">0 pts</strong></span> <!-- 最大回撤 -->
+                </div> <!-- 績效細節結束 -->
+            </div> <!-- 卡片 4 結束 -->
+
+        </section> <!-- 統計卡片網格結束 -->
+
+        <!-- 第二區：XAUUSD 8H 互動主圖表 -->
+        <section class="chart-section glass-panel"> <!-- 主圖表面板區塊 -->
+            <div class="panel-header"> <!-- 面板標題列 -->
+                <h2>📊 XAUUSD 8H 主圖表 (含策略均線 & 進出場標記)</h2> <!-- 圖表大標題 -->
+                <div class="chart-controls"> <!-- 圖表控制工具列 -->
+                    <button id="btn-reset-gold-chart" class="btn-reset">🔄 重置 Y 軸 / 全視角</button> <!-- 重置 Y 軸與全視角按鈕 -->
+                    <span class="legend-badge badge-30ma">8H 30MA</span> <!-- 8H 30MA 圖例 -->
+                    <span class="legend-badge badge-50ma">Daily 50MA</span> <!-- Daily 50MA 圖例 -->
+                    <span class="legend-badge badge-20ma">Daily 20MA</span> <!-- Daily 20MA 圖例 -->
+                    <span class="legend-badge badge-60ma">Daily 60MA</span> <!-- Daily 60MA 圖例 -->
+                </div> <!-- 工具列結束 -->
+            </div> <!-- 面板標題列結束 -->
+            <div id="gold-chart" class="plotly-chart-container"></div> <!-- XAUUSD Plotly 繪圖掛載點 -->
+        </section> <!-- XAUUSD 圖表區塊結束 -->
+
+        <!-- 策略權益曲線區：Equity Curve 累積點數損益圖表 -->
+        <section class="chart-section glass-panel"> <!-- 權益曲線面板區塊 -->
+            <div class="panel-header"> <!-- 面板標題列 -->
+                <h2>📈 策略累積權益曲線 (Equity Curve & Cumulative PnL)</h2> <!-- 圖表標題 -->
+                <div class="chart-controls"> <!-- 控制按鈕區塊 -->
+                    <button id="btn-reset-equity-chart" class="btn-reset">🔄 重置 Equity 視角</button> <!-- 重置視角按鈕 -->
+                    <span id="equity-max-pnl" class="legend-badge badge-30ma">歷史最高 PnL: +0.00 pts</span> <!-- 歷史最高損益標籤 -->
+                    <span id="equity-current-pnl" class="legend-badge badge-dxy-20">當前累積 PnL: +0.00 pts</span> <!-- 最新累積損益標籤 -->
+                </div> <!-- 控制區塊結束 -->
+            </div> <!-- 面板標題列結束 -->
+            <div id="equity-chart" class="plotly-chart-container small-chart"></div> <!-- Equity Curve Plotly 繪圖掛載點 -->
+        </section> <!-- 權益曲線區塊結束 -->
+
+        <!-- 第三區：Dollar Index (DXY) 互動圖表 -->
+        <section class="chart-section glass-panel"> <!-- 美元指數圖表區塊 -->
+            <div class="panel-header"> <!-- 面板標題列 -->
+                <h2>💵 Dollar Index (DXY) 美元指數圖表 (與 Alpha 跨市場參考)</h2> <!-- 圖表標題 -->
+                <div class="chart-controls"> <!-- 圖表圖例標籤 -->
+                    <button id="btn-reset-dxy-chart" class="btn-reset">🔄 重置 DXY 視角</button> <!-- 重置 DXY 視角按鈕 -->
+                    <span class="legend-badge badge-dxy-20">DXY 20MA</span> <!-- DXY 20MA 圖例 -->
+                    <span class="legend-badge badge-dxy-60">DXY 60MA</span> <!-- DXY 60MA 圖例 -->
+                </div> <!-- 圖例區塊結束 -->
+            </div> <!-- 面板標題列結束 -->
+            <div id="dxy-chart" class="plotly-chart-container small-chart"></div> <!-- DXY Plotly 繪圖掛載點 -->
+        </section> <!-- DXY 圖表區塊結束 -->
+
+        <!-- 第四區：歷史交易紀錄互動表格 -->
+        <section class="table-section glass-panel"> <!-- 交易表格區塊容器 -->
+            <div class="panel-header"> <!-- 表格標題列與搜尋過濾區 -->
+                <h2>📋 歷史交易紀錄 (Trade Log Table)</h2> <!-- 表格標題 -->
+                <div class="table-actions"> <!-- 表格搜尋與篩選操作列 -->
+                    <div class="selection-controls"> <!-- 勾選批次控制按鈕群組 -->
+                        <button id="btn-select-filtered" class="btn-action" title="勾選符合目前篩選條件的所有交易">☑️ 全選篩選項目</button> <!-- 全選按鈕 -->
+                        <button id="btn-clear-all" class="btn-action btn-danger-action" title="清除所有勾選項目">🧹 全清除</button> <!-- 全清除按鈕 -->
+                        <span id="selected-count-badge" class="selected-badge">已勾選：0 筆</span> <!-- 已勾選數量統計標籤 -->
+                    </div> <!-- 勾選群組結束 -->
+                    <input type="text" id="table-search" placeholder="搜尋日期、方向、原因..." class="search-input"> <!-- 搜尋關鍵字輸入框 -->
+                    <select id="type-filter" class="select-filter"> <!-- 交易類型下拉選單 -->
+                        <option value="ALL">全部交易方向</option> <!-- 全部選項 -->
+                        <option value="Long">僅多單 (Long)</option> <!-- 僅多單 -->
+                        <option value="Short">僅空單 (Short)</option> <!-- 僅空單 -->
+                        <option value="Pyramid">僅加碼單 (Pyramid)</option> <!-- 僅加碼單 -->
+                    </select> <!-- 選單結束 -->
+                </div> <!-- 操作列結束 -->
+            </div> <!-- 標題列結束 -->
+            
+            <div class="table-responsive"> <!-- 響應式滾動表格包覆容器 -->
+                <table id="trades-table" class="custom-table"> <!-- 自訂交易紀錄數據表格 -->
+                    <thead> <!-- 表格標題行開啟 -->
+                        <tr> <!-- 表頭列 -->
+                            <th style="width: 45px; text-align: center;"><input type="checkbox" id="check-all-header" title="當頁全選 / 全取消"></th> <!-- 勾選全選欄 -->
+                            <th>單號</th> <!-- 交易編號欄 -->
+                            <th>方向 (Type)</th> <!-- 多空方向欄 -->
+                            <th>性質 (Category)</th> <!-- 主部位/加碼單欄 -->
+                            <th>進場時間</th> <!-- 建倉時間欄 -->
+                            <th>進場價</th> <!-- 建倉價格欄 -->
+                            <th>出場時間</th> <!-- 平倉時間欄 -->
+                            <th>出場價</th> <!-- 平倉價格欄 -->
+                            <th>結算停損價</th> <!-- 最終停損價欄 -->
+                            <th>盈虧 (點數)</th> <!-- 交易損益點數欄 -->
+                            <th>持有時間</th> <!-- 持有小時數欄 -->
+                            <th>平倉原因</th> <!-- 平倉原因欄 -->
+                        </tr> <!-- 表頭列結束 -->
+                    </thead> <!-- 表頭結束 -->
+                    <tbody id="trades-tbody"> <!-- 表格資料內容掛載區 -->
+                        <!-- 由 JavaScript 動態繪製生成資料列 -->
+                    </tbody> <!-- 表格資料區結束 -->
+                </table> <!-- 表格結束 -->
+            </div> <!-- 響應式容器結束 -->
+
+            <div class="table-pagination"> <!-- 分頁控制與筆數統計區塊 -->
+                <span id="page-info">顯示 0 到 0 筆，共 0 筆交易</span> <!-- 分頁資訊文字 -->
+                <div class="pagination-buttons"> <!-- 分頁按鈕容器 -->
+                    <button id="btn-prev-page" class="btn-page">上一頁</button> <!-- 上一頁按鈕 -->
+                    <button id="btn-next-page" class="btn-page">下一頁</button> <!-- 下一頁按鈕 -->
+                </div> <!-- 按鈕容器結束 -->
+            </div> <!-- 分頁區塊結束 -->
+
+        </section> <!-- 交易表格區塊結束 -->
+
+    </div> <!-- 外層容器結束 -->
+
+    <script src="app.js"></script> <!-- 載入核心前端互動腳本 app.js -->
+</body> <!-- 網頁主體區塊結束 -->
+</html> <!-- HTML5 文件結束 -->

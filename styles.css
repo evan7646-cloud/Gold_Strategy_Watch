@@ -1,0 +1,79 @@
+* { box-sizing: border-box; margin: 0; padding: 0; } /* 重設所有元素的邊界與外距 */
+body { font-family: 'Outfit', -apple-system, sans-serif; background-color: #0b0e14; color: #d1d4dc; line-height: 1.5; padding: 20px; } /* 設定整體背景色、字型與文字顏色 */
+
+.dashboard-container { max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; } /* 儀表板最外層容器最大寬度與垂直間距 */
+
+.header-bar { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(19, 23, 34, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; backdrop-filter: blur(10px); } /* 頁首標題列背景與圓角 */
+.logo-title { display: flex; align-items: center; gap: 16px; } /* 標題圖示與文字排版 */
+.gold-icon { font-size: 32px; filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4)); } /* 黃金圖示放大與金光陰影 */
+.header-bar h1 { font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; } /* 主標題文字大小與字重 */
+.subtitle { font-size: 13px; color: #787b86; font-family: 'JetBrains Mono', monospace; } /* 副標題單色字型與顏色 */
+
+.system-status-pill { display: flex; align-items: center; gap: 10px; background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.3); padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #00e676; font-weight: 600; } /* 綠色動態狀態標籤 */
+.pulse-dot { width: 8px; height: 8px; background-color: #00e676; border-radius: 50%; box-shadow: 0 0 10px #00e676; animation: pulse-anim 2s infinite; } /* 綠色呼吸燈點 */
+@keyframes pulse-anim { 0% { transform: scale(0.95); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.5; } 100% { transform: scale(0.95); opacity: 1; } } /* 呼吸燈動畫 Keyframes */
+
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; } /* 卡片四欄響應式網格系統 */
+.glass-card { background: rgba(19, 23, 34, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; backdrop-filter: blur(12px); transition: transform 0.2s, box-shadow 0.2s; } /* 玻璃擬態基本卡片樣式 */
+.glass-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); border-color: rgba(255, 255, 255, 0.15); } /* 卡片懸停懸浮效果 */
+.highlight-card { background: linear-gradient(135deg, rgba(30, 38, 56, 0.9), rgba(20, 26, 40, 0.9)); border: 1px solid rgba(41, 182, 246, 0.3); } /* 總績效強調卡片漸層樣式 */
+
+.card-title { font-size: 13px; color: #9db2c6; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; } /* 卡片小標題樣式 */
+.card-main-val { font-size: 26px; font-weight: 700; color: #ffffff; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; } /* 卡片主要數據文字樣式 */
+.card-detail { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #787b86; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 10px; } /* 卡片底部細節區劃分 */
+.card-detail strong { color: #e1e3e6; font-family: 'JetBrains Mono', monospace; } /* 細節數字粗體字型 */
+.positive-val { color: #00e676; } /* 正損益綠色文字 */
+.negative-val { color: #ff1744; } /* 負損益紅色文字 */
+
+.glass-panel { background: rgba(19, 23, 34, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; backdrop-filter: blur(12px); } /* 大區塊面板統一玻璃邊框 */
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; } /* 圖表與表格面板頂部列 */
+.panel-header h2 { font-size: 18px; font-weight: 600; color: #ffffff; } /* 面板大標題文字 */
+
+.chart-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } /* 圖表圖例標籤容器 */
+.btn-reset { background: rgba(41, 182, 246, 0.15); border: 1px solid rgba(41, 182, 246, 0.4); color: #29b6f6; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; } /* 重置 Y 軸視角按鈕樣式 */
+.btn-reset:hover { background: #29b6f6; color: #000000; box-shadow: 0 0 10px rgba(41, 182, 246, 0.4); } /* 重置按鈕懸停亮色效果 */
+
+.legend-badge { font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; padding: 4px 10px; border-radius: 6px; } /* 圖例標籤基礎樣式 */
+.badge-30ma { background: rgba(41, 182, 246, 0.2); color: #29b6f6; border: 1px solid #29b6f6; } /* 8H 30MA 藍色標籤 */
+.badge-50ma { background: rgba(171, 71, 188, 0.2); color: #ab47bc; border: 1px solid #ab47bc; } /* Daily 50MA 紫色標籤 */
+.badge-20ma { background: rgba(255, 167, 38, 0.2); color: #ffa726; border: 1px solid #ffa726; } /* Daily 20MA 橘色標籤 */
+.badge-60ma { background: rgba(236, 64, 121, 0.2); color: #ec407a; border: 1px solid #ec407a; } /* Daily 60MA 粉紅標籤 */
+.badge-dxy-20 { background: rgba(38, 166, 154, 0.2); color: #26a69a; border: 1px solid #26a69a; } /* DXY 20MA 青色標籤 */
+.badge-dxy-60 { background: rgba(239, 83, 80, 0.2); color: #ef5350; border: 1px solid #ef5350; } /* DXY 60MA 紅色標籤 */
+
+.plotly-chart-container { width: 100%; height: 550px; border-radius: 8px; overflow: hidden; } /* Plotly 主圖表容器尺寸 */
+.small-chart { height: 350px; } /* DXY 副圖表容器高度 */
+
+.table-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } /* 表格搜尋與選單控制區域 */
+.selection-controls { display: flex; gap: 8px; align-items: center; } /* 勾選控制鈕與標籤區塊 */
+.btn-action { background: rgba(0, 230, 118, 0.15); border: 1px solid rgba(0, 230, 118, 0.4); color: #00e676; padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; } /* 動作按鈕綠色主題 */
+.btn-action:hover { background: #00e676; color: #000000; box-shadow: 0 0 10px rgba(0, 230, 118, 0.4); } /* 按鈕懸停樣式 */
+.btn-danger-action { background: rgba(255, 23, 68, 0.15); border: 1px solid rgba(255, 23, 68, 0.4); color: #ff1744; } /* 警告性按鈕紅色主題 */
+.btn-danger-action:hover { background: #ff1744; color: #ffffff; box-shadow: 0 0 10px rgba(255, 23, 68, 0.4); } /* 警告按鈕懸停樣式 */
+.selected-badge { font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #ffa726; background: rgba(255, 167, 38, 0.15); border: 1px solid rgba(255, 167, 38, 0.3); padding: 5px 10px; border-radius: 6px; } /* 已勾選數量標籤 */
+
+.trade-checkbox, #check-all-header { accent-color: #00e676; width: 16px; height: 16px; cursor: pointer; vertical-align: middle; } /* 自訂 Checkbox 綠色主題 Accent */
+
+.table-responsive { width: 100%; overflow-x: auto; max-height: 480px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; } /* 表格滾動容器 */
+.custom-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; font-family: 'JetBrains Mono', monospace; } /* 表格主體樣式 */
+.custom-table th { background: rgba(30, 36, 52, 0.95); color: #8492a6; padding: 12px 16px; font-weight: 600; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255, 255, 255, 0.1); } /* 表頭固定黏性定位與樣式 */
+.custom-table td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: #b2b8c5; transition: background 0.15s; } /* 表格資料格底線與間距 */
+.custom-table tbody tr { cursor: pointer; } /* 表格資料列滑標顯示手勢 */
+.custom-table tbody tr:hover { background: rgba(41, 182, 246, 0.08); } /* 滑鼠懸停資料列高亮 */
+.custom-table tbody tr.active-row { background: rgba(0, 230, 118, 0.12); border-left: 3px solid #00e676; } /* 點擊選取資料列高亮顯眼背景 */
+
+.badge-long { background: rgba(0, 230, 118, 0.15); color: #00e676; padding: 3px 8px; border-radius: 4px; font-weight: bold; } /* 多單綠色標籤 */
+.badge-short { background: rgba(255, 23, 68, 0.15); color: #ff1744; padding: 3px 8px; border-radius: 4px; font-weight: bold; } /* 空單紅色標籤 */
+.badge-pyr { background: rgba(255, 152, 0, 0.15); color: #ff9800; padding: 3px 8px; border-radius: 4px; } /* 加碼單橘色標籤 */
+.badge-main { background: rgba(41, 182, 246, 0.15); color: #29b6f6; padding: 3px 8px; border-radius: 4px; } /* 主部位藍色標籤 */
+
+.table-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px; color: #787b86; } /* 分頁列樣式 */
+.pagination-buttons { display: flex; gap: 8px; } /* 分頁按鈕排列間距 */
+.btn-page { background: rgba(30, 36, 50, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); color: #ffffff; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; } /* 分頁按鈕樣式 */
+.btn-page:hover:not(:disabled) { background: #29b6f6; border-color: #29b6f6; color: #000; font-weight: bold; } /* 按鈕懸停樣式 */
+.btn-page:disabled { opacity: 0.4; cursor: not-allowed; } /* 禁用按鈕透明度 */
+
+::-webkit-scrollbar { width: 6px; height: 6px; } /* 滾動條寬度與高度 */
+::-webkit-scrollbar-track { background: rgba(11, 14, 20, 0.5); } /* 滾動條軌道背景 */
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; } /* 滾動條手柄樣式 */
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); } /* 滾動條懸停顏色 */

@@ -1,0 +1,57 @@
+name: 📈 Update Gold Strategy Data  # 工作流名稱
+
+on:
+  schedule:
+    # 平日（週一至週五）每 4 小時執行一次
+    # cron 時間為 UTC，台北時間 = UTC+8
+    # UTC 02:00 = 台北 10:00
+    # UTC 06:00 = 台北 14:00
+    # UTC 10:00 = 台北 18:00
+    # UTC 14:00 = 台北 22:00
+    # UTC 22:00 = 台北 06:00（次日）
+    - cron: '0 2,6,10,14,22 * * 1-5'  # 平日 UTC 02/06/10/14/22 各執行一次
+
+  workflow_dispatch:  # 允許手動從 GitHub Actions 頁面觸發
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest  # 使用最新版 Ubuntu 執行環境
+    timeout-minutes: 30  # 最長執行 30 分鐘，超時自動中止
+
+    steps:
+      - name: ⬇️ Checkout repository  # 拉取最新程式碼
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # 使用 GitHub 自動提供的 token
+
+      - name: 🐍 Set up Python 3.11  # 安裝 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # 快取 pip 套件加速安裝
+
+      - name: 📦 Install dependencies  # 安裝所需套件
+        run: pip install -r requirements.txt  # 依 requirements.txt 安裝
+
+      - name: 🔄 Run strategy update  # 執行策略回測與資料更新
+        run: python gold_hybrid_strategy.py  # 抓取最新資料並更新 strategy_results.json
+        env:
+          PYTHONUNBUFFERED: '1'  # 確保 print 即時輸出至 Actions log
+
+      - name: 📊 Check if data changed  # 檢查資料是否有更新
+        id: check_changes
+        run: |
+          git diff --quiet strategy_results.json && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: 💾 Commit and push updated data  # 若有更新則 commit 並推送
+        if: steps.check_changes.outputs.changed == 'true'  # 只有在資料真的有變動時才 commit
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"  # 設定 bot 電子郵件
+          git config --local user.name "github-actions[bot]"  # 設定 bot 名稱
+          git add strategy_results.json combined_hybrid_performance.csv  # 加入更新的檔案
+          git commit -m "🤖 Auto-update: strategy data $(date -u +'%Y-%m-%d %H:%M UTC')"  # 自動 commit 訊息帶時間戳
+          git push  # 推送到 GitHub
+
+      - name: ✅ No changes detected  # 若無變動印出提示
+        if: steps.check_changes.outputs.changed == 'false'
+        run: echo "資料無更新，跳過 commit。"  # 印出跳過提示
