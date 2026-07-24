@@ -31,9 +31,11 @@ input group "===== 交易識別 =====" // 交易識別群組
 input ulong    InpMagicMain      = 88880001;         // 主部位 Magic Number
 input ulong    InpMagicPyramid   = 88880002;         // 加倉部位 Magic Number
 
-input group "===== 其他設定 =====" // 其他設定群組
-input bool     InpEnablePyramid  = true;             // 是否啟用加倉機制
-input bool     InpEnableAlerts   = true;             // 是否啟用交易提醒通知
+input group "===== 其他與加倉設定 =====" // 其他與加倉設定群組
+input bool     InpEnablePyramid          = true;             // 是否啟用加倉機制
+input double   InpAlphaBoostThresh       = 0.03;             // Alpha10 放大手數門檻 (預設 3% = 0.03)
+input double   InpPyramidBoostMultiplier = 2.0;              // Alpha10 達標時加碼手數倍率 (預設 2.0 倍)
+input bool     InpEnableAlerts           = true;             // 是否啟用交易提醒通知
 
 //+------------------------------------------------------------------+
 //| 全域狀態變數 (Global State Variables)                              |
@@ -402,11 +404,20 @@ void ProcessNew8HBar()
          else if(!hasPyrLong && InpEnablePyramid && g_PyramidLongOK && g_RegimeBull && totalEAPos < 2) // 🛡️ 加上持倉數量與 Regime 檢查
          { // 執行加多單建倉
             g_trade.SetExpertMagicNumber(InpMagicPyramid); // 切換 Magic Number 為加倉
-            if(g_trade.Buy(InpLotSize, _Symbol, 0, 0, 0, "Pyramid_Long")) // 市價買入加多
+            
+            //--- 計算動態加碼手數 (當 Alpha10 > 3% 時放大至 2.0 倍)
+            double pyrLot = InpLotSize; // 預設加碼手數等於基底手數
+            double a1 = 0, a5 = 0, a10 = 0; // 宣告 Alpha 變數
+            if(CalculateAlpha(a1, a5, a10) && a10 > InpAlphaBoostThresh) // 若計算成功且 Alpha10 > 3%
+            { // 觸發強勢加碼手數放大
+               pyrLot = NormalizeDouble(InpLotSize * InpPyramidBoostMultiplier, 2); // 手數乘以 2.0 倍並規範到小數位數
+            } // 結束動態手數判定
+
+            if(g_trade.Buy(pyrLot, _Symbol, 0, 0, 0, "Pyramid_Long")) // 市價買入加多
             { // 寫入加倉初始停損
                g_PyramidStopPrice = longStopInit; // 設定加倉初始停損價
-               PrintFormat("🟢 [加多單進場] 手數=%.2f | 停損=%.2f", InpLotSize, g_PyramidStopPrice); // 日誌
-               if(InpEnableAlerts) Alert("🟢 Gold 8H: 加多單進場"); // 發送提醒
+               PrintFormat("🟢 [加多單進場] 手數=%.2f (Alpha10=%.2f%%) | 停損=%.2f", pyrLot, a10 * 100.0, g_PyramidStopPrice); // 日誌
+               if(InpEnableAlerts) Alert("🟢 Gold 8H: 加多單進場 (手數:", DoubleToString(pyrLot, 2), ")"); // 發送提醒
             } // 結束買入
             g_trade.SetExpertMagicNumber(InpMagicMain); // 切換回主部位 Magic Number
          } // 結束加多建倉
@@ -463,11 +474,20 @@ void ProcessNew8HBar()
          else if(!hasPyrShort && InpEnablePyramid && g_PyramidShortOK && !g_RegimeBull && totalEAPos < 2) // 🛡️ 加上持倉數量與 Regime 檢查
          { // 執行加空單建倉
             g_trade.SetExpertMagicNumber(InpMagicPyramid); // 切換 Magic Number 為加倉
-            if(g_trade.Sell(InpLotSize, _Symbol, 0, 0, 0, "Pyramid_Short")) // 市價賣出開空
+            
+            //--- 計算動態加碼手數 (當 Alpha10 < -3% 時放大至 2.0 倍)
+            double pyrLot = InpLotSize; // 預設加碼手數等於基底手數
+            double a1 = 0, a5 = 0, a10 = 0; // 宣告 Alpha 變數
+            if(CalculateAlpha(a1, a5, a10) && a10 < -InpAlphaBoostThresh) // 若計算成功且 Alpha10 < -3%
+            { // 觸發強勢加碼手數放大
+               pyrLot = NormalizeDouble(InpLotSize * InpPyramidBoostMultiplier, 2); // 手數乘以 2.0 倍並規範到小數位數
+            } // 結束動態手數判定
+
+            if(g_trade.Sell(pyrLot, _Symbol, 0, 0, 0, "Pyramid_Short")) // 市價賣出開空
             { // 寫入加倉初始停損
                g_PyramidStopPrice = shortStopInit; // 設定加倉初始停損價
-               PrintFormat("🔻 [加空單進場] 手數=%.2f | 停損=%.2f", InpLotSize, g_PyramidStopPrice); // 日誌
-               if(InpEnableAlerts) Alert("🔻 Gold 8H: 加空單進場"); // 發送提醒
+               PrintFormat("🔻 [加空單進場] 手數=%.2f (Alpha10=%.2f%%) | 停損=%.2f", pyrLot, a10 * 100.0, g_PyramidStopPrice); // 日誌
+               if(InpEnableAlerts) Alert("🔻 Gold 8H: 加空單進場 (手數:", DoubleToString(pyrLot, 2), ")"); // 發送提醒
             } // 結束賣出
             g_trade.SetExpertMagicNumber(InpMagicMain); // 切換回主部位 Magic Number
          } // 結束加空建倉
