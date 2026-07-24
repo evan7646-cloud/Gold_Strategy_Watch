@@ -16,6 +16,8 @@ on:
 jobs:
   update-data:
     runs-on: ubuntu-latest  # 使用最新版 Ubuntu 執行環境
+    permissions:
+      contents: write  # 賦予 GITHUB_TOKEN 推送與寫入權限 (解決 HTTP 403 Error)
     timeout-minutes: 30  # 最長執行 30 分鐘，超時自動中止
 
     steps:
