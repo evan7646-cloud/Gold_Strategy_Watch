@@ -100,9 +100,10 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                     for p in active_positions:  # 遍歷部位
                         holding_days = (pd.to_datetime(next_stamp).date() - pd.to_datetime(p['entry_date']).date()).days  # 持有跨日天數
                         raw_pnl = next_open - p['entry_price']  # 原始點數
-                        net_pnl = raw_pnl - 0.3 - (holding_days * 0.75)  # 扣除點差與過夜費
+                        net_pnl_unit = raw_pnl - 0.3 - (holding_days * 0.75)  # 扣除點差與過夜費
+                        net_pnl = net_pnl_unit * p.get('units', 1.0)  # 加權淨損益
                         completed_trades.append({  # 記錄
-                            'type': 'Long', 'is_pyramid': p['is_pyramid'],
+                            'type': 'Long', 'is_pyramid': p['is_pyramid'], 'units': p.get('units', 1.0),
                             'entry_date': p['entry_date'], 'entry_price': p['entry_price'],
                             'exit_date': next_stamp, 'exit_price': next_open,
                             'stop_price': round(p['stop_price'], 2), 'pnl_points': round(net_pnl, 2),
@@ -123,9 +124,10 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                         if t_close < p_pos['stop_price']:  # 跌破加多停損
                             holding_days = (pd.to_datetime(next_stamp).date() - pd.to_datetime(p_pos['entry_date']).date()).days  # 跨日天數
                             raw_pnl = next_open - p_pos['entry_price']  # 點數
-                            net_pnl = raw_pnl - 0.3 - (holding_days * 0.75)  # 扣成本
+                            net_pnl_unit = raw_pnl - 0.3 - (holding_days * 0.75)  # 扣成本
+                            net_pnl = net_pnl_unit * p_pos.get('units', 1.0)  # 加權淨損益
                             completed_trades.append({  # 記錄平倉加多
-                                'type': 'Long', 'is_pyramid': True,
+                                'type': 'Long', 'is_pyramid': True, 'units': p_pos.get('units', 1.0),
                                 'entry_date': p_pos['entry_date'], 'entry_price': p_pos['entry_price'],
                                 'exit_date': next_stamp, 'exit_price': next_open,
                                 'stop_price': round(p_pos['stop_price'], 2), 'pnl_points': round(net_pnl, 2),
@@ -141,19 +143,20 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                             new_active.append(p_pos)  # 保留
                     else:  # 未加多
                         if dy_close > dy_ma50 and dy_pyramid_long:  # 滿足加多
+                            pyr_units = 2.0 if dy_a10 > 0.03 else 1.0  # 觸發時若 Alpha10 > 3% 則賦予 2.0 units
                             new_active.append({  # 建立加多
-                                'type': 'Long', 'is_pyramid': True, 'entry_date': next_stamp,
+                                'type': 'Long', 'is_pyramid': True, 'units': pyr_units, 'entry_date': next_stamp,
                                 'entry_price': next_open, 'stop_price': min(t_low, t_prev_low) - 1.0 * t_atr
                             })  # 加多建立結束
                             annotations.append({  # 圖表標記
-                                'time': next_stamp, 'price': next_open, 'title': '+Pyramid Long',
+                                'time': next_stamp, 'price': next_open, 'title': f"+Pyramid Long ({pyr_units}x)",
                                 'text': f"Price: {next_open:.2f}", 'shape': 'arrowUp', 'color': '#26a69a'
                             })  # 標記結束
                     active_positions = new_active  # 更新部位
             else:  # 空手多單
                 if dy_close > dy_ma50 and is_long_sig:  # 滿足主多
                     active_positions.append({  # 建立主多
-                        'type': 'Long', 'is_pyramid': False, 'entry_date': next_stamp,
+                        'type': 'Long', 'is_pyramid': False, 'units': 1.0, 'entry_date': next_stamp,
                         'entry_price': next_open, 'stop_price': min(t_low, t_prev_low) - 1.0 * t_atr
                     })  # 建立結束
                     annotations.append({  # 圖表標記
@@ -172,9 +175,10 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                     for p in active_positions:  # 遍歷部位
                         holding_days = (pd.to_datetime(next_stamp).date() - pd.to_datetime(p['entry_date']).date()).days  # 持有跨日天數
                         raw_pnl = p['entry_price'] - next_open  # 空單點數
-                        net_pnl = raw_pnl - 0.3 + (holding_days * 0.27)  # 扣點差加利息
+                        net_pnl_unit = raw_pnl - 0.3 + (holding_days * 0.27)  # 扣點差加利息
+                        net_pnl = net_pnl_unit * p.get('units', 1.0)  # 加權淨損益
                         completed_trades.append({  # 記錄
-                            'type': 'Short', 'is_pyramid': p['is_pyramid'],
+                            'type': 'Short', 'is_pyramid': p['is_pyramid'], 'units': p.get('units', 1.0),
                             'entry_date': p['entry_date'], 'entry_price': p['entry_price'],
                             'exit_date': next_stamp, 'exit_price': next_open,
                             'stop_price': round(p['stop_price'], 2), 'pnl_points': round(net_pnl, 2),
@@ -195,9 +199,10 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                         if t_close > p_pos['stop_price']:  # 突破加空停損
                             holding_days = (pd.to_datetime(next_stamp).date() - pd.to_datetime(p_pos['entry_date']).date()).days  # 天數
                             raw_pnl = p_pos['entry_price'] - next_open  # 點數
-                            net_pnl = raw_pnl - 0.3 + (holding_days * 0.27)  # 扣點差加利息
+                            net_pnl_unit = raw_pnl - 0.3 + (holding_days * 0.27)  # 扣點差加利息
+                            net_pnl = net_pnl_unit * p_pos.get('units', 1.0)  # 加權淨損益
                             completed_trades.append({  # 記錄平倉加空
-                                'type': 'Short', 'is_pyramid': True,
+                                'type': 'Short', 'is_pyramid': True, 'units': p_pos.get('units', 1.0),
                                 'entry_date': p_pos['entry_date'], 'entry_price': p_pos['entry_price'],
                                 'exit_date': next_stamp, 'exit_price': next_open,
                                 'stop_price': round(p_pos['stop_price'], 2), 'pnl_points': round(net_pnl, 2),
@@ -213,19 +218,20 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
                             new_active.append(p_pos)  # 保留
                     else:  # 未加空
                         if dy_close < dy_ma50 and dy_pyramid_short:  # 滿足加空
+                            pyr_units = 2.0 if dy_a10 < -0.03 else 1.0  # 觸發時若 Alpha10 < -3% 則賦予 2.0 units
                             new_active.append({  # 建立加空
-                                'type': 'Short', 'is_pyramid': True, 'entry_date': next_stamp,
+                                'type': 'Short', 'is_pyramid': True, 'units': pyr_units, 'entry_date': next_stamp,
                                 'entry_price': next_open, 'stop_price': max(t_high, t_prev_high) + 1.0 * t_atr
                             })  # 加空建立結束
                             annotations.append({  # 圖表標記
-                                'time': next_stamp, 'price': next_open, 'title': '+Pyramid Short',
+                                'time': next_stamp, 'price': next_open, 'title': f"+Pyramid Short ({pyr_units}x)",
                                 'text': f"Price: {next_open:.2f}", 'shape': 'arrowDown', 'color': '#ef5350'
                             })  # 標記結束
                     active_positions = new_active  # 更新部位
             else:  # 空手空單
                 if dy_close < dy_ma50 and not is_long_sig:  # 滿足主空
                     active_positions.append({  # 建立主空
-                        'type': 'Short', 'is_pyramid': False, 'entry_date': next_stamp,
+                        'type': 'Short', 'is_pyramid': False, 'units': 1.0, 'entry_date': next_stamp,
                         'entry_price': next_open, 'stop_price': max(t_high, t_prev_high) + 1.0 * t_atr
                     })  # 建立結束
                     annotations.append({  # 圖表標記
