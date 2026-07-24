@@ -67,6 +67,33 @@ string   g_gvKeyPyramidStop;         // 加倉部位停損價的 GlobalVariable 
 string   g_gvKeyLastBar8H;           // 上次 8H K 線時間的 GlobalVariable 鍵名
 
 //+------------------------------------------------------------------+
+//| 取得經紀商支援的成交模式 (解決 10030 / 10027 成交模式退單錯誤)   |
+//+------------------------------------------------------------------+
+ENUM_ORDER_TYPE_FILLING GetValidFillingMode()
+{
+   uint filling = (uint)SymbolInfoInteger(_Symbol, SYMBOL_FILLING_MODE); // 讀取商品成交模式標誌
+   if((filling & SYMBOL_FILLING_IOC) != 0) return ORDER_FILLING_IOC;    // 優先使用 IOC
+   if((filling & SYMBOL_FILLING_FOK) != 0) return ORDER_FILLING_FOK;    // 次選 FOK
+   return ORDER_FILLING_RETURN;                                         // 預設使用 RETURN
+}
+
+//+------------------------------------------------------------------+
+//| 規範手數至經紀商最小/最大與步長範圍 (防止不合法手數退單)           |
+//+------------------------------------------------------------------+
+double NormalizeLot(double lot)
+{
+   double step   = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP); // 手數步長
+   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);  // 最小手數
+   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);  // 最大手數
+
+   if(step <= 0) step = 0.01; // 防空值
+   double normalized = MathFloor(lot / step + 0.000001) * step; // 依步長向下對齊
+   if(normalized < minLot) normalized = minLot; // 不得低於最小手數
+   if(normalized > maxLot) normalized = maxLot; // 不得高於最大手數
+   return NormalizeDouble(normalized, 2); // 規範小數位數
+}
+
+//+------------------------------------------------------------------+
 //| EA 初始化函數 (OnInit)                                            |
 //+------------------------------------------------------------------+
 int OnInit()
@@ -80,7 +107,7 @@ int OnInit()
    //--- 嘗試將 DXY 商品加入 Market Watch (確保可取得跨市場數據)
    if(!SymbolSelect(InpDXYSymbol, true)) // 加入 DXY 至 Market Watch
    {
-      PrintFormat("⚠️ 警告：無法將 %s 加入 Market Watch，加倉過濾器將無法運作", InpDXYSymbol); // 印出警告
+      PrintFormat("⚠️ 警告：無法將 %s 加入 Market Watch，加倉過濾器將尋找備用商品", InpDXYSymbol); // 印出警告
    }
 
    //--- 建立 8H 時區指標句柄
@@ -122,8 +149,8 @@ int OnInit()
 
    //--- 設定交易物件的 Magic Number 與滑點
    g_trade.SetExpertMagicNumber(InpMagicMain); // 預設使用主部位 Magic Number
-   g_trade.SetDeviationInPoints(30); // 設定最大滑點 30 個點 (黃金通常需要較大滑點容許)
-   g_trade.SetTypeFilling(ORDER_FILLING_IOC); // 設定成交模式為 IOC (立即或取消)
+   g_trade.SetDeviationInPoints(50); // 設定最大滑點 50 個點 (實盤保護)
+   g_trade.SetTypeFilling(GetValidFillingMode()); // 🛡️ 動態設定經紀商支援的成交模式 (防止 10030 退單)
 
    //--- 從 GlobalVariable 恢復持久化狀態 (防止 EA 重啟後遺失停損價)
    LoadPersistentState(); // 載入持久化狀態
@@ -163,18 +190,33 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   //--- 🛡️ 斷線重啟或異常情況下的持倉與停損價同步檢查
+   //--- 🛡️ 斷線重啟與手動平倉同步防護
    int totalEAPos = CountPositionsByEA(); // 統計本 EA 當前總持倉數量
+   bool hasMain = HasPositionByMagic(InpMagicMain, POSITION_TYPE_BUY) || HasPositionByMagic(InpMagicMain, POSITION_TYPE_SELL); // 有無主部位
+   bool hasPyr  = HasPositionByMagic(InpMagicPyramid, POSITION_TYPE_BUY) || HasPositionByMagic(InpMagicPyramid, POSITION_TYPE_SELL); // 有無加倉部位
+
+   if(!hasMain && hasPyr) // 🛡️ 漏洞修復：若手動關閉主單但殘留加倉單 (孤兒部位)
+   {
+      Print("⚠️ [孤兒部位防護] 偵測到主部位已被平倉！自動平倉孤立加倉部位以維持策略運作"); // 警報日誌
+      ClosePositionsByMagic(InpMagicPyramid); // 強制平倉孤立加倉部位
+      g_MainStopPrice = 0.0; // 清空主停損
+      g_PyramidStopPrice = 0.0; // 清空加倉停損
+      SavePersistentState(); // 儲存持久化狀態
+   }
+   else if(!hasMain && g_MainStopPrice != 0.0) // 主部位個案手動平倉同步
+   {
+      g_MainStopPrice = 0.0; // 清空主部位停損
+      SavePersistentState(); // 儲存持久化狀態
+   }
+   else if(!hasPyr && g_PyramidStopPrice != 0.0) // 加倉部位個案手動平倉同步
+   {
+      g_PyramidStopPrice = 0.0; // 清空加倉部位停損
+      SavePersistentState(); // 儲存持久化狀態
+   }
+
    if(totalEAPos > 0 && g_MainStopPrice == 0.0 && g_DailyReady) // 若有持倉但停損價為零
    {
       ReconstructStopPrices(); // 啟動歷史軌跡重構
-   }
-   else if(totalEAPos == 0 && (g_MainStopPrice != 0.0 || g_PyramidStopPrice != 0.0)) // 若無持倉但停損價不為零 (手動平倉同步)
-   {
-      g_MainStopPrice = 0.0; // 重設主停損
-      g_PyramidStopPrice = 0.0; // 重設加倉停損
-      SavePersistentState(); // 立即儲存狀態至持久化空間
-      Print("🧹 [狀態同步] 偵測到帳戶無持倉，已清空停損狀態"); // 提示日誌
    }
 
    //--- 檢查是否有新的日線 K 線收盤 (更新日線過濾器)
@@ -243,11 +285,27 @@ void UpdateDailyFilters()
 }
 
 //+------------------------------------------------------------------+
+//| 取得有效的 DXY 美元指數商品名稱 (自動搜尋經紀商相符代號)         |
+//+------------------------------------------------------------------+
+string GetValidDXYSymbol()
+{
+   if(SymbolSelect(InpDXYSymbol, true)) return InpDXYSymbol; // 若用戶指定之商品存在直接使用
+   string candidates[] = {"DXY", "USDX", "USDOLLAR", "DXY_U6", "USDINDEX", "DXY.ecn", "DXY!"}; // 備選商品代號
+   for(int i = 0; i < ArraySize(candidates); i++) // 遍歷備選清單
+   {
+      if(SymbolSelect(candidates[i], true)) return candidates[i]; // 找到可用商品即回傳
+   }
+   return InpDXYSymbol; // 若皆找不到則回傳用戶設定值
+}
+
+//+------------------------------------------------------------------+
 //| 計算跨市場超額動能 Alpha 指標                                      |
 //| 回傳值：true = 計算成功, false = DXY 數據不可用                   |
 //+------------------------------------------------------------------+
 bool CalculateAlpha(double &alpha1, double &alpha5, double &alpha10)
 {
+   string dxySym = GetValidDXYSymbol(); // 🛡️ 取得有效的 DXY 商品代號
+
    //--- 讀取黃金日線收盤價序列 (bar[1] 到 bar[11]，共需 12 根)
    double goldCloses[12]; // 宣告黃金收盤價陣列
    for(int i = 0; i < 12; i++) // 迴圈讀取 12 根日線收盤價
@@ -260,7 +318,7 @@ bool CalculateAlpha(double &alpha1, double &alpha5, double &alpha10)
    double dxyCloses[12]; // 宣告 DXY 收盤價陣列
    for(int i = 0; i < 12; i++) // 迴圈讀取 12 根 DXY 日線收盤價
    {
-      dxyCloses[i] = iClose(InpDXYSymbol, PERIOD_D1, i + 1); // 從 bar[1] 開始讀取
+      dxyCloses[i] = iClose(dxySym, PERIOD_D1, i + 1); // 🛡️ 使用選定之 DXY 商品代號
       if(dxyCloses[i] == 0) return false; // 若任一根為 0 則返回失敗
    }
 
@@ -406,11 +464,11 @@ void ProcessNew8HBar()
             g_trade.SetExpertMagicNumber(InpMagicPyramid); // 切換 Magic Number 為加倉
             
             //--- 計算動態加碼手數 (當 Alpha10 > 3% 時放大至 2.0 倍)
-            double pyrLot = InpLotSize; // 預設加碼手數等於基底手數
+            double pyrLot = NormalizeLot(InpLotSize); // 預設加碼手數等於基底手數
             double a1 = 0, a5 = 0, a10 = 0; // 宣告 Alpha 變數
             if(CalculateAlpha(a1, a5, a10) && a10 > InpAlphaBoostThresh) // 若計算成功且 Alpha10 > 3%
             { // 觸發強勢加碼手數放大
-               pyrLot = NormalizeDouble(InpLotSize * InpPyramidBoostMultiplier, 2); // 手數乘以 2.0 倍並規範到小數位數
+               pyrLot = NormalizeLot(InpLotSize * InpPyramidBoostMultiplier); // 🛡️ 使用 NormalizeLot 規範手數
             } // 結束動態手數判定
 
             if(g_trade.Buy(pyrLot, _Symbol, 0, 0, 0, "Pyramid_Long")) // 市價買入加多
@@ -476,11 +534,11 @@ void ProcessNew8HBar()
             g_trade.SetExpertMagicNumber(InpMagicPyramid); // 切換 Magic Number 為加倉
             
             //--- 計算動態加碼手數 (當 Alpha10 < -3% 時放大至 2.0 倍)
-            double pyrLot = InpLotSize; // 預設加碼手數等於基底手數
+            double pyrLot = NormalizeLot(InpLotSize); // 預設加碼手數等於基底手數
             double a1 = 0, a5 = 0, a10 = 0; // 宣告 Alpha 變數
             if(CalculateAlpha(a1, a5, a10) && a10 < -InpAlphaBoostThresh) // 若計算成功且 Alpha10 < -3%
             { // 觸發強勢加碼手數放大
-               pyrLot = NormalizeDouble(InpLotSize * InpPyramidBoostMultiplier, 2); // 手數乘以 2.0 倍並規範到小數位數
+               pyrLot = NormalizeLot(InpLotSize * InpPyramidBoostMultiplier); // 🛡️ 使用 NormalizeLot 規範手數
             } // 結束動態手數判定
 
             if(g_trade.Sell(pyrLot, _Symbol, 0, 0, 0, "Pyramid_Short")) // 市價賣出開空
@@ -500,23 +558,24 @@ void ProcessNew8HBar()
    totalEAPos = CountPositionsByEA(); // 重新統計最新總持倉數
    if(totalEAPos == 0) // 當前無任何持倉
    { // 開始檢查新建主部位
+      double mainLot = NormalizeLot(InpLotSize); // 🛡️ 規範主部位手數
       if(g_RegimeBull && sig_long_8h) // 牛市環境且 8H 動能做多
       { // 執行買入主多單
          g_trade.SetExpertMagicNumber(InpMagicMain); // 確保使用主部位 Magic Number
-         if(g_trade.Buy(InpLotSize, _Symbol, 0, 0, 0, "Main_Long")) // 市價買入
+         if(g_trade.Buy(mainLot, _Symbol, 0, 0, 0, "Main_Long")) // 市價買入
          { // 寫入初始停損
             g_MainStopPrice = longStopInit; // 設定主多單初始停損價
-            PrintFormat("🟢 [主多單進場] 手數=%.2f | 停損=%.2f | MA8H=%.2f", InpLotSize, g_MainStopPrice, ma8h); // 日誌
+            PrintFormat("🟢 [主多單進場] 手數=%.2f | 停損=%.2f | MA8H=%.2f", mainLot, g_MainStopPrice, ma8h); // 日誌
             if(InpEnableAlerts) Alert("🟢 Gold 8H: 主多單進場 @ ", DoubleToString(SymbolInfoDouble(_Symbol, SYMBOL_ASK), 2)); // 提醒
          } // 結束買入
       } // 結束主多單建倉
       else if(!g_RegimeBull && !sig_long_8h) // 熊市環境且 8H 動能做空
       { // 執行賣出主空單
          g_trade.SetExpertMagicNumber(InpMagicMain); // 確保使用主部位 Magic Number
-         if(g_trade.Sell(InpLotSize, _Symbol, 0, 0, 0, "Main_Short")) // 市價賣出開空
+         if(g_trade.Sell(mainLot, _Symbol, 0, 0, 0, "Main_Short")) // 市價賣出開空
          { // 寫入初始停損
             g_MainStopPrice = shortStopInit; // 設定主空單初始停損價
-            PrintFormat("🔻 [主空單進場] 手數=%.2f | 停損=%.2f | MA8H=%.2f", InpLotSize, g_MainStopPrice, ma8h); // 日誌
+            PrintFormat("🔻 [主空單進場] 手數=%.2f | 停損=%.2f | MA8H=%.2f", mainLot, g_MainStopPrice, ma8h); // 日誌
             if(InpEnableAlerts) Alert("🔻 Gold 8H: 主空單進場 @ ", DoubleToString(SymbolInfoDouble(_Symbol, SYMBOL_BID), 2)); // 提醒
          } // 結束賣出
       } // 結束主空單建倉
