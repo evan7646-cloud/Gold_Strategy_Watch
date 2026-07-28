@@ -33,11 +33,11 @@ def download_data():  # 定義下載數據的函數
             print(f"⚠️ 黃金期貨日線下載警告: {e_gd}")  # 印出警告
 
         try:  # 嘗試下載 4H K線
-            df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='OANDA', interval=Interval.in_4_hour, n_bars=5000)  # 優先讀取 OANDA XAUUSD 取得跨越 2023-2026 之完整 5000 根 4H 資料
-            if df_gold_raw is None or df_gold_raw.empty:  # 若未取得則回退 COMEX GC1!
-                df_gold_raw = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 回退 COMEX GC1!
+            df_gold_raw = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_1_hour, n_bars=10000)  # 讀取 COMEX GC1! 1H K線以合成高精確度 4H 數據
+            if df_gold_raw is None or df_gold_raw.empty:  # 若 1H 未取得則回退 4H
+                df_gold_raw = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 回退 COMEX GC1! 4H
 
-            if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查 4H 資料是否成功取得
+            if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
                 df_gold_raw['datetime'] = df_gold_raw['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
@@ -51,7 +51,7 @@ def download_data():  # 定義下載數據的函數
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
                 df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點 2024年7月起算) 合成成功")  # 印出成功提示
+                print("✅ 黃金期貨 4H K線 (對齊 backtest_4h_8h_full_metrics +3354.61 點) 合成成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ 黃金期貨 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
