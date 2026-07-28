@@ -35,7 +35,7 @@ def main():
             # 使用 4H 資料重取樣合成 8H K線
             df.set_index('timestamp', inplace=True)  # 將 timestamp 設為 DataFrame 的索引以進行 resample
             # 採用 origin='start' 以便以資料起始時間精準切分 8 小時區間
-            df_8h = df.resample('8h', origin='start').agg({
+            df_8h = df.resample('8h', origin='start').agg({  # 重取樣合成 8H K線 (採用原始 start 動態切分)
                 'open': 'first',  # open 取該 8 小時區間內第一筆 K線開盤價
                 'high': 'max',  # high 取該 8 小時區間內最高價
                 'low': 'min',  # low 取該 8 小時區間內最低價

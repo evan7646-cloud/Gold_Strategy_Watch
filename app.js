@@ -87,18 +87,18 @@ function renderStatusCards(status, metrics, goldChartData) { // 渲染狀態卡�
     document.getElementById('mdd-val').textContent = `${metrics.max_drawdown} pts`; // 顯示最大回撤
 } // renderStatusCards 結束
 
-function renderGoldChart(chartData, annotations) { // 繪製 XAUUSD 8H Plotly 主圖表 (開放雙軸拉伸與重置)
+function renderGoldChart(chartData, annotations) { // 繪製 XAUUSD 4H Plotly 主圖表 (開放雙軸拉伸與重置)
     const candlestickTrace = { // K 線軌跡設定
         x: chartData.timestamps, // 時間
         open: chartData.open, high: chartData.high, low: chartData.low, close: chartData.close, // 四價
-        type: 'candlestick', name: 'XAUUSD 8H K線', // 類型與名稱
+        type: 'candlestick', name: 'XAUUSD 4H K線', // 類型與名稱
         increasing: { line: { color: '#00e676', width: 1 }, fillcolor: '#00e676' }, // 上漲 K 線亮綠色
         decreasing: { line: { color: '#ff1744', width: 1 }, fillcolor: '#ff1744' } // 下跌 K 線亮紅色
     }; // K 線軌跡結束
 
-    const ma30Trace = { // 8H 30MA 軌跡
+    const ma30Trace = { // 4H 30MA 軌跡
         x: chartData.timestamps, y: chartData.ma30_8h, mode: 'lines', // 折線模式
-        name: '8H 30MA', line: { color: '#29b6f6', width: 1.5 } // 藍色線條
+        name: '4H 30MA', line: { color: '#29b6f6', width: 1.5 } // 藍色線條
     }; // 30MA 結束
 
     const dailyMa50Trace = { // Daily 50MA 軌跡

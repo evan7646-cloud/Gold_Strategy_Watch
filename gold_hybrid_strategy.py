@@ -25,21 +25,25 @@ def download_data():  # 定義下載數據的函數
         df_gold_d[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
         print("✅ 黃金期貨日線下載成功")  # 印出成功提示
 
-    df_gold_4h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 下載黃金 4H K線資料
-    if df_gold_4h is not None and not df_gold_4h.empty:  # 檢查 4H 資料是否取得
-        df_gold_4h = df_gold_4h.reset_index()  # 重設索引
-        df_gold_4h['datetime'] = df_gold_4h['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
-        df_gold_4h = df_gold_4h.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
-        df_gold_4h.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-        df_gold_8h = df_gold_4h.resample('8h', origin='start').agg({  # 重取樣合成 8H K線
-            'open': 'first',  # 取 8H 第一筆開盤價
-            'high': 'max',  # 取 8H 最高價
-            'low': 'min',  # 取 8H 最低價
-            'close': 'last'  # 取 8H 最後收盤價
+    df_gold_1h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_1_hour, n_bars=10000)  # 下載黃金 1H K線資料
+    if df_gold_1h is None or df_gold_1h.empty:  # 檢查 1H 是否取得
+        df_gold_1h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 回退抓 4H
+
+    if df_gold_1h is not None and not df_gold_1h.empty:  # 檢查 1H/4H 資料是否取得
+        df_gold_1h = df_gold_1h.reset_index()  # 重設索引
+        df_gold_1h['datetime'] = df_gold_1h['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
+        df_gold_1h = df_gold_1h.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
+        df_gold_1h.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
+        origin_tz = pd.Timestamp('2024-01-01 02:00:00', tz='Asia/Taipei')  # 設定 02:00 (UTC 02:00) 偏移錨點
+        df_gold_4h = df_gold_1h.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+2h offset)
+            'open': 'first',  # 取 4H 第一筆開盤價
+            'high': 'max',  # 取 4H 最高價
+            'low': 'min',  # 取 4H 最低價
+            'close': 'last'  # 取 4H 最後收盤價
         }).dropna().reset_index()  # 去除空值並重設索引
-        df_gold_8h['timestamp'] = df_gold_8h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
-        df_gold_8h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_8h.csv', index=False)  # 儲存 8H K線 CSV
-        print("✅ 黃金期貨 8H K線合成成功")  # 印出成功提示
+        df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
+        df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
+        print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點) 合成成功")  # 印出成功提示
 
 def calculate_atr(df, period=14):  # 定義計算真實波幅均值 ATR 的函數
     high = df['high']  # 取得最高價序列
@@ -65,10 +69,10 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
         t_close = df.loc[i, 'close']  # 收盤價
         t_high = df.loc[i, 'high']  # 最高價
         t_low = df.loc[i, 'low']  # 最低價
-        t_atr = df.loc[i, 'atr14_8h']  # ATR
+        t_atr = df.loc[i, 'atr14_4h']  # 4H ATR
 
-        t_prev_high = df.loc[i-1, 'high'] if i > 0 else t_high  # 昨日高
-        t_prev_low = df.loc[i-1, 'low'] if i > 0 else t_low  # 昨日低
+        t_prev_high = df.loc[i-1, 'high'] if i > 0 else t_high  # 前一根高
+        t_prev_low = df.loc[i-1, 'low'] if i > 0 else t_low  # 前一根低
 
         dy_close = df.loc[i, 'daily_close_avail']  # 日線收盤
         dy_ma50 = df.loc[i, 'daily_ma50_avail']  # 日線 50MA
@@ -78,7 +82,7 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
         dy_a5 = df.loc[i, 'daily_alpha5_avail']  # Alpha5
         dy_a10 = df.loc[i, 'daily_alpha10_avail']  # Alpha10
 
-        is_long_sig = df.loc[i, 'sig_long_8h']  # 8H 多頭訊號
+        is_long_sig = df.loc[i, 'sig_long_4h']  # 4H 多頭訊號
 
         next_open = df.loc[i+1, 'open']  # 下期開盤價
         next_stamp = str(df.loc[i+1, 'timestamp'])  # 下期時間
@@ -241,17 +245,17 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
 
     return active_positions, completed_trades, annotations  # 回傳單向數據
 
-def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之回測函數
+def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
     gold_daily_file = 'comex_gc1!_daily.csv'  # 指定黃金日線檔
     dxy_daily_file = 'iceus_dxy_daily.csv'  # 指定美元指數檔
-    gold_8h_file = 'comex_gc1!_8h.csv'  # 指定 8H 檔
+    gold_4h_file = 'comex_gc1!_4h.csv'  # 指定 4H 檔
 
-    if not os.path.exists(gold_daily_file) or not os.path.exists(dxy_daily_file) or not os.path.exists(gold_8h_file):  # 檢查檔案
+    if not os.path.exists(gold_daily_file) or not os.path.exists(dxy_daily_file) or not os.path.exists(gold_4h_file):  # 檢查檔案
         download_data()  # 自動下載
 
     gold_d = pd.read_csv(gold_daily_file)  # 讀取黃金日線
     dxy_d = pd.read_csv(dxy_daily_file)  # 讀取 DXY 日線
-    gold_8h = pd.read_csv(gold_8h_file)  # 讀取 8H
+    gold_4h = pd.read_csv(gold_4h_file)  # 讀取 4H
 
     gold_d = gold_d.rename(columns={'close': 'gold_close', 'open': 'gold_open', 'high': 'gold_high', 'low': 'gold_low'})  # 重新命名欄位
     dxy_d = dxy_d.rename(columns={'close': 'dxy_close', 'open': 'dxy_open', 'high': 'dxy_high', 'low': 'dxy_low'})  # 重新命名欄位
@@ -282,11 +286,11 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
     df_daily['daily_alpha5_avail'] = df_daily['alpha_5'].shift(1)  # T-1 Alpha5
     df_daily['daily_alpha10_avail'] = df_daily['alpha_10'].shift(1)  # T-1 Alpha10
 
-    gold_8h['timestamp'] = pd.to_datetime(gold_8h['timestamp'])  # 轉 8H datetime
-    gold_8h = gold_8h.sort_values('timestamp').reset_index(drop=True)  # 排序 8H
-    gold_8h['date'] = gold_8h['timestamp'].dt.date  # 提取日期
+    gold_4h['timestamp'] = pd.to_datetime(gold_4h['timestamp'])  # 轉 4H datetime
+    gold_4h = gold_4h.sort_values('timestamp').reset_index(drop=True)  # 排序 4H
+    gold_4h['date'] = gold_4h['timestamp'].dt.date  # 提取日期
 
-    df = pd.merge(gold_8h, df_daily[[  # 合併日線欄位
+    df = pd.merge(gold_4h, df_daily[[  # 合併日線欄位
         'date', 'daily_close_avail', 'daily_ma50_avail', 'daily_ma20_avail', 'daily_ma60_avail',
         'daily_alpha1_avail', 'daily_alpha5_avail', 'daily_alpha10_avail'
     ]], on='date', how='left')  # 左連結
@@ -299,13 +303,13 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
     df['daily_alpha5_avail'] = df['daily_alpha5_avail'].ffill()  # 填充
     df['daily_alpha10_avail'] = df['daily_alpha10_avail'].ffill()  # 填充
 
-    df['ma30_8h'] = df['close'].rolling(30).mean()  # 8H 30MA
-    df['atr14_8h'] = calculate_atr(df, 14)  # 8H 14ATR
+    df['ma30_4h'] = df['close'].rolling(30).mean()  # 4H 30MA
+    df['atr14_4h'] = calculate_atr(df, 14)  # 4H 14ATR
     df['dy_raw'] = df['close'].diff()  # 動能一階差
-    df['sig_long_8h'] = (df['close'] > df['ma30_8h']) & (df['dy_raw'] > 0)  # 8H 多頭訊號
+    df['sig_long_4h'] = (df['close'] > df['ma30_4h']) & (df['dy_raw'] > 0)  # 4H 多頭訊號
 
     df = df.dropna().reset_index(drop=True)  # 刪除 NaN
-    df = df[df['timestamp'] >= '2024-07-07'].reset_index(drop=True)  # 完全對齊原檔 2024-07-07 時間過濾
+    df = df[df['timestamp'] >= '2024-07-07'].reset_index(drop=True)  # 對齊 2024-07-07 回測起始期
 
     pos_l, trades_l, ann_l = simulate_direction(df, is_long_only=True)  # 模擬多單子組合
     pos_s, trades_s, ann_s = simulate_direction(df, is_long_only=False)  # 模擬空單子組合
@@ -318,7 +322,7 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
 
     all_ann = ann_l + ann_s  # 聯集圖表標記
 
-    latest_row = df.iloc[-1]  # 取得最後一筆 8H 數據
+    latest_row = df.iloc[-1]  # 取得最後一筆 4H 數據
     dxy_df_final = df_daily[df_daily['timestamp'] >= df['timestamp'].min()].dropna(subset=['dxy_close']).reset_index(drop=True)  # 對齊 DXY
 
     current_status = {  # 即時狀況物件
@@ -326,7 +330,7 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
         'gold_close': float(latest_row['close']),  # 黃金現價
         'dxy_close': float(dxy_df_final.iloc[-1]['dxy_close']),  # DXY 現價
         'regime': 'Bull (牛市多頭)' if (latest_row['daily_close_avail'] > latest_row['daily_ma50_avail']) else 'Bear (熊市空頭)',  # 最新 Regime
-        'ma8h_30': float(latest_row['ma30_8h']),  # 30MA
+        'ma4h_30': float(latest_row['ma30_4h']),  # 4H 30MA
         'daily_ma50': float(latest_row['daily_ma50_avail']),  # 50MA
         'daily_ma20': float(latest_row['daily_ma20_avail']),  # 20MA
         'daily_ma60': float(latest_row['daily_ma60_avail']),  # 60MA
@@ -360,7 +364,7 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
     gold_chart_data = {  # 黃金圖表數據
         'timestamps': df['timestamp'].astype(str).tolist(),  # 時間戳
         'open': df['open'].tolist(), 'high': df['high'].tolist(), 'low': df['low'].tolist(), 'close': df['close'].tolist(),  # 四價
-        'ma30_8h': sanitize_list(df['ma30_8h'].tolist()),  # 30MA
+        'ma30_8h': sanitize_list(df['ma30_4h'].tolist()),  # 4H 30MA (維持欄位名對齊前端)
         'daily_ma50': sanitize_list(df['daily_ma50_avail'].tolist()),  # 50MA
         'daily_ma20': sanitize_list(df['daily_ma20_avail'].tolist()),  # 20MA
         'daily_ma60': sanitize_list(df['daily_ma60_avail'].tolist()),  # 60MA
@@ -382,7 +386,7 @@ def run_backtest():  # 定義完整對齊 Final_backtest_combined_hybrid.py 之�
     with open('strategy_results.json', 'w', encoding='utf-8') as f:  # 寫入 JSON
         json.dump(output_data, f, ensure_ascii=False, indent=2)  # dump 寫檔
 
-    print(f"🎉 策略回測完成！已完全對齊 Final_backtest_combined_hybrid.py (累積淨損益: {total_pnl:.2f} 點, 總交易數: {len(all_trades)} 筆)")  # 印出提示
+    print(f"🎉 4H 30MA (+2h Offset) 策略回測完成！ (累積淨損益: {total_pnl:.2f} 點, 總交易數: {len(all_trades)} 筆, 最大回撤: {max_drawdown:.2f} 點)")  # 印出提示
 
 if __name__ == '__main__':  # 入口點
     run_backtest()  # 執行
