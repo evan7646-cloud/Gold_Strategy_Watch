@@ -47,7 +47,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"  # 設定 bot 電子郵件
           git config --local user.name "github-actions[bot]"  # 設定 bot 名稱
-          git add strategy_results.json combined_hybrid_performance.csv  # 加入更新的檔案
+          git add strategy_results.json comex_gc1!_4h.csv comex_gc1!_daily.csv iceus_dxy_daily.csv  # 加入更新的 JSON 與 CSV 數據檔案
           git commit -m "🤖 Auto-update: strategy data $(date -u +'%Y-%m-%d %H:%M UTC')"  # 自動 commit 訊息帶時間戳
           git push  # 推送到 GitHub
 

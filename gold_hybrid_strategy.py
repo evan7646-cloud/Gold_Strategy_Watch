@@ -6,43 +6,53 @@ from tvDatafeed import TvDatafeed, Interval  # 匯入 tvDatafeed 以抓取 Tradi
 
 def download_data():  # 定義下載數據的函數
     print("正在檢查並下載最新 K 線數據...")  # 印出下載提示訊息
-    tv = TvDatafeed()  # 初始化 TradingView 匿名客戶端實例
-    df_dxy = tv.get_hist(symbol='DXY', exchange='ICEUS', interval=Interval.in_daily, n_bars=5000)  # 下載美元指數日線資料
-    if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
-        df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
-        df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
-        df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
-        df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
-        df_dxy[['timestamp', 'open', 'high', 'low', 'close']].to_csv('iceus_dxy_daily.csv', index=False)  # 儲存美元指數日線 CSV
-        print("✅ 美元指數日線下載成功")  # 印出成功提示
+    try:  # 嘗試初始化與下載
+        tv = TvDatafeed()  # 初始化 TradingView 匿名客戶端實例
+        try:  # 嘗試下載 DXY 日線
+            df_dxy = tv.get_hist(symbol='DXY', exchange='ICEUS', interval=Interval.in_daily, n_bars=5000)  # 下載美元指數日線資料
+            if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
+                df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
+                df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
+                df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
+                df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
+                df_dxy[['timestamp', 'open', 'high', 'low', 'close']].to_csv('iceus_dxy_daily.csv', index=False)  # 儲存美元指數日線 CSV
+                print("✅ 美元指數日線下載成功")  # 印出成功提示
+        except Exception as e_dxy:  # 捕捉 DXY 下載異常
+            print(f"⚠️ 美元指數下載警告: {e_dxy}")  # 印出警告
 
-    df_gold_d = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_daily, n_bars=5000)  # 下載黃金日線資料
-    if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
-        df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
-        df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
-        df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
-        df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
-        df_gold_d[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
-        print("✅ 黃金期貨日線下載成功")  # 印出成功提示
+        try:  # 嘗試下載黃金日線
+            df_gold_d = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_daily, n_bars=5000)  # 下載黃金日線資料
+            if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
+                df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
+                df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
+                df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
+                df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
+                df_gold_d[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
+                print("✅ 黃金期貨日線下載成功")  # 印出成功提示
+        except Exception as e_gd:  # 捕捉黃金日線下載異常
+            print(f"⚠️ 黃金期貨日線下載警告: {e_gd}")  # 印出警告
 
-    df_gold_1h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_1_hour, n_bars=10000)  # 下載黃金 1H K線資料
-    if df_gold_1h is None or df_gold_1h.empty:  # 檢查 1H 是否取得
-        df_gold_1h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 回退抓 4H
-
-    if df_gold_1h is not None and not df_gold_1h.empty:  # 檢查 1H/4H 資料是否取得
-        df_gold_1h = df_gold_1h.reset_index()  # 重設索引
-        df_gold_1h['datetime'] = df_gold_1h['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
-        df_gold_1h = df_gold_1h.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
-        df_gold_1h.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-        origin_tz = pd.Timestamp('2024-01-01 02:00:00', tz='Asia/Taipei')  # 設定 02:00 (UTC 02:00) 偏移錨點
-        df_gold_4h = df_gold_1h.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+2h offset)
-            'open': 'first',  # 取 4H 第一筆開盤價
-            'high': 'max',  # 取 4H 最高價
-            'low': 'min',  # 取 4H 最低價
-            'close': 'last'  # 取 4H 最後收盤價
-        }).dropna().reset_index()  # 去除空值並重設索引
-        df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
-        df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
+        try:  # 嘗試下載 4H K線
+            df_gold_1h = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 下載黃金 4H K線資料
+            if df_gold_1h is not None and not df_gold_1h.empty:  # 檢查 4H 資料是否取得
+                df_gold_1h = df_gold_1h.reset_index()  # 重設索引
+                df_gold_1h['datetime'] = df_gold_1h['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
+                df_gold_1h = df_gold_1h.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
+                df_gold_1h.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
+                origin_tz = pd.Timestamp('2024-01-01 02:00:00', tz='Asia/Taipei')  # 設定 02:00 (UTC 02:00) 偏移錨點
+                df_gold_4h = df_gold_1h.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+2h offset)
+                    'open': 'first',  # 取 4H 第一筆開盤價
+                    'high': 'max',  # 取 4H 最高價
+                    'low': 'min',  # 取 4H 最低價
+                    'close': 'last'  # 取 4H 最後收盤價
+                }).dropna().reset_index()  # 去除空值並重設索引
+                df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
+                df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
+                print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點) 合成成功")  # 印出成功提示
+        except Exception as e_g4h:  # 捕捉 4H K線下載異常
+            print(f"⚠️ 黃金期貨 4H K線下載警告: {e_g4h}")  # 印出警告
+    except Exception as e_main:  # 捕捉整體連線異常
+        print(f"⚠️ 下載數據發生連線異常: {e_main}，將使用本地快取資料進行回測")  # 印出提示 warning
         print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點) 合成成功")  # 印出成功提示
 
 def calculate_atr(df, period=14):  # 定義計算真實波幅均值 ATR 的函數
