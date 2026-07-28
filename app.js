@@ -46,11 +46,11 @@ function renderStatusCards(status, metrics, goldChartData) { // 渲染狀態卡�
     const isAlphaBull = status.alpha_1d > 0 && status.alpha_5d > 0 && status.alpha_10d > 0; // 多頭 Alpha 判定
     const isAlphaBear = status.alpha_1d < 0 && status.alpha_5d < 0 && status.alpha_10d < 0; // 空頭 Alpha 判定
     
-    if (isAlphaBull) { // 多頭加碼強勢
-        alphaStatusEl.textContent = '強勢加多 (Alpha > 0)'; // 文字設定
+    if (isAlphaBull) { // 多頭 Alpha 強勢
+        alphaStatusEl.textContent = 'Alpha 多頭強勢 (Gold > DXY)'; // 文字設定 (澄清非當前部位)
         alphaStatusEl.className = 'card-main-val positive-val'; // 綠色樣式
-    } else if (isAlphaBear) { // 空頭加碼強勢
-        alphaStatusEl.textContent = '強勢加空 (Alpha < 0)'; // 文字設定
+    } else if (isAlphaBear) { // 空頭 Alpha 強勢
+        alphaStatusEl.textContent = 'Alpha 空頭強勢 (Gold < DXY)'; // 文字設定 (澄清非當前部位)
         alphaStatusEl.className = 'card-main-val negative-val'; // 紅色樣式
     } else { // 動能中性
         alphaStatusEl.textContent = '動能分化中 (No Momentum)'; // 文字設定
