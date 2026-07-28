@@ -33,7 +33,7 @@ async function fetchData() { // 非同步讀取策略 JSON 數據函數
 function renderStatusCards(status, metrics, goldChartData) { // 渲染狀態卡片數據函數
     const startStr = goldChartData.timestamps[0].substring(0, 10); // 取得回測起始年月日
     const endStr = status.last_updated.substring(0, 10); // 取得回測結束年月日
-    document.getElementById('last-updated-text').textContent = `回測區間：${startStr} ~ ${endStr} (約 3.2 年)`; // 於頂部標籤顯示完整時間區間
+    document.getElementById('last-updated-text').textContent = `回測區間：${startStr} ~ ${endStr} (約 2.1 年)`; // 於頂部標籤顯示完整時間區間
     
     const regimeEl = document.getElementById('regime-val'); // 取得 Regime 卡片 DOM
     regimeEl.textContent = status.regime; // 填入 Regime 狀態文字
