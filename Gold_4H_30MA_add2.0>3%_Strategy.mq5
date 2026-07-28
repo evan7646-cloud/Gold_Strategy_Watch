@@ -28,8 +28,8 @@ input int      InpMA20_Period    = 20;               // 日線 20MA 週期 (加�
 input int      InpMA60_Period    = 60;               // 日線 60MA 週期 (加倉過濾)
 
 input group "===== 交易識別 =====" // 交易識別群組
-input ulong    InpMagicMain      = 88880001;         // 主部位 Magic Number
-input ulong    InpMagicPyramid   = 88880002;         // 加倉部位 Magic Number
+input ulong    InpMagicMain      = 44440001;         // 主部位 Magic Number (專屬 4H 識別碼)
+input ulong    InpMagicPyramid   = 44440002;         // 加倉部位 Magic Number (專屬 4H 識別碼)
 
 input group "===== 其他與加倉設定 =====" // 其他與加倉設定群組
 input bool     InpEnablePyramid          = true;             // 是否啟用加倉機制
