@@ -1,21 +1,21 @@
 //+------------------------------------------------------------------+
 //|                                   Indicator_UTC0h_4H_30MA.mq5 |
 //|                     在 1H 圖表上繪製 +0h 時間之 4H 30MA 均線指標    |
-//|                               Version 1.00                        |
+//|                               Version 2.00                        |
 //+------------------------------------------------------------------+
 #property copyright "Gold UTC+0h 4H 30MA Indicator" // 版權宣告
-#property version   "1.00" // 版本號
+#property version   "2.00" // 版本號
 #property indicator_chart_window // 在主圖表視窗繪製
 #property indicator_buffers 1 // 使用 1 個指標緩衝區
 #property indicator_plots   1 // 繪製 1 條指標線
 
 #property indicator_label1  "4H 30MA (+0h)" // 指標線標籤
 #property indicator_type1   DRAW_LINE // 繪製線條
-#property indicator_color1  clrGold // 金黃色線條
+#property indicator_color1  clrOrangeRed // 改用高對比鮮艷深橘紅色 (確保白底與黑底皆極其清晰)
 #property indicator_style1  STYLE_SOLID // 實線
-#property indicator_width1  2 // 線條寬度 2
+#property indicator_width1  3 // 線條粗細改為 3 (加粗顯眼)
 
-//--- 指標緩衝區 (Buffer)
+//--- 指標緩衝區
 double   BufferMA4H[]; // 4H 30MA 數據緩衝區
 
 //+------------------------------------------------------------------+
@@ -25,7 +25,7 @@ int OnInit()
 {
    SetIndexBuffer(0, BufferMA4H, INDICATOR_DATA); // 綁定緩衝區 0
    PlotIndexSetString(0, PLOT_LABEL, "4H 30MA (+0h Offset)"); // 設定圖例說明
-   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0); // 設空值為 0
+   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE); // 設定空值標誌
    return(INIT_SUCCEEDED); // 回傳成功
 }
 
@@ -58,33 +58,35 @@ int OnCalculate(const int rates_total,
    if(rates_total < 200) return 0; // K 線數量不足跳過
 
    int start = prev_calculated - 1; // 計算起始位置
-   if(start < 0) start = 0; // 首次全量計算
+   if(start < 150) start = 150; // 防初始陣列越界
 
    for(int i = start; i < rates_total; i++) // 遍歷每根 1H K 線
    {
-      // 步驟 1: 在 i 以及之前的 1H K 線中，尋找最新一個 +0h 4H 開盤點 (即 IsUTC0hStart == true)
+      // 尋找當前 1H 所在或之前的最新 +0h 4H 開盤點
       int startIdx = i;
       while(startIdx >= 0 && !IsUTC0hStart(time[startIdx]))
       {
          startIdx--;
       }
 
-      if(startIdx < 120) // 前方歷史數據不足 30 根 4H (120 小時) 則填 0
+      if(startIdx < 120) // 歷史數據不足跳過
       {
-         BufferMA4H[i] = 0.0;
+         BufferMA4H[i] = EMPTY_VALUE;
          continue;
       }
 
-      // 步驟 2: startIdx - 1 即為最新完結 +0h 4H 之收盤 K 線！
-      // 倒序累加前 30 根完結 +0h 4H 之收盤價 (每隔 4 小時向前取一次 4H 收盤價)
+      // startIdx - 1 為最新完結 +0h 4H 之末端 1H 收盤價
       double sumClose = 0.0;
       for(int k = 0; k < 30; k++)
       {
-         int closeIdx = (startIdx - 1) - (k * 4); // 前推 k 個 4H 區間末端 1H
-         sumClose += close[closeIdx]; // 累加該 4H 之真正收盤價
+         int closeIdx = (startIdx - 1) - (k * 4); // 每隔 4 小時前推一次 4H 收盤價
+         if(closeIdx >= 0)
+            sumClose += close[closeIdx];
+         else
+            sumClose += close[0];
       }
 
-      BufferMA4H[i] = sumClose / 30.0; // 計算精準對齊台北時間 +0h 之 4H 30MA (在 MT5 03,07,11,15,19,23 時刻準時跳階)
+      BufferMA4H[i] = sumClose / 30.0; // 賦予指標緩衝區數據 (在 1H 圖表上即時劃出 +0h 4H 30MA 階梯線)
    }
 
    return(rates_total); // 回傳已計算數量
