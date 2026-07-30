@@ -142,6 +142,10 @@ int OnInit()
    //--- 載入 GlobalVariable 持久化狀態 (重啟防失憶)
    LoadPersistentState(); // 載入停損價與狀態
 
+   //--- 開機自動補單檢查：若當前無持倉，初始化時立即檢查最新完結 4H 訊號並自動補單
+   UpdateDailyFilters(); // 預先更新日線趨勢過濾器
+   ProcessNew4HBar(); // 立即執行 4H 訊號判定 (若無持倉且符合 12:00 空頭條件將自動補單)
+
    PrintFormat("🚀 Gold 4H 30MA Hybrid Strategy EA (+0h Offset) 初始化成功！[MagicMain=%d, MagicPyramid=%d]", InpMagicMain, InpMagicPyramid); // 印出成功日誌
    return(INIT_SUCCEEDED); // 回傳成功
 }
