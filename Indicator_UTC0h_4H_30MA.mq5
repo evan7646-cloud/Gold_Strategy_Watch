@@ -55,29 +55,44 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   if(rates_total < 150) return 0; // K 線數量不足跳過
+   if(rates_total < 200) return 0; // K 線數量不足跳過
 
    int start = prev_calculated - 1; // 計算起始位置
    if(start < 0) start = 0; // 首次全量計算
 
    for(int i = start; i < rates_total; i++) // 遍歷每根 1H K 線
    {
-      double sumClose = 0.0; // 30 根 +0h 4H 收盤價總和
+      double sumClose = 0.0; // 30 根完結 +0h 4H 收盤價總和
       int count = 0; // 計數器
       int cur = i; // 追蹤游標
 
-      while(cur >= 0 && count < 30) // 向後尋找 30 根 +0h 4H 完結 K 線
+      // 先尋找當前 1H 所在之已完結 +0h 4H 區間末端
+      while(cur >= 3)
       {
-         if(IsUTC0hStart(time[cur])) // 每逢 +0h 開盤點 (即該 4H 第一根 1H)
+         if(IsUTC0hStart(time[cur - 3])) // cur-3 為 +0h 4H 第一根 1H，則 cur 為該 4H 第四根 1H (末端)
          {
-            sumClose += close[cur]; // 累加收盤價
-            count++; // 計數加一
+            break;
          }
-         cur--; // 向前移動 1 小時
+         cur--;
+      }
+
+      // 倒序累加前 30 根完結 +0h 4H 之實際收盤價 (第 4 根 1H 之 close)
+      while(cur >= 3 && count < 30)
+      {
+         if(IsUTC0hStart(time[cur - 3])) // 判定符合 +0h 4H 區間
+         {
+            sumClose += close[cur]; // 累加該 4H 之真正收盤價
+            count++; // 計數加一
+            cur -= 4; // 跳到上一個 4H 的末端 1H
+         }
+         else
+         {
+            cur--; // 移動游標
+         }
       }
 
       if(count == 30)
-         BufferMA4H[i] = sumClose / 30.0; // 計算 4H 30MA 平滑線
+         BufferMA4H[i] = sumClose / 30.0; // 計算精準對齊之 4H 30MA 平滑線
       else
          BufferMA4H[i] = 0.0; // 數據不足填 0
    }
