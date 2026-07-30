@@ -214,7 +214,7 @@ def main(): # 主流程函數
     print("🚀 開始執行 XAUUSD (Spot Gold) 全動態 4H vs 8H 包括 Sharpe Ratio & Calmar Ratio 完整比較...") # 提示訊息
     
     tv = TvDatafeed() # 初始化 TradingView
-    df_gold_1h = tv.get_hist(symbol='XAUUSD', exchange='OANDA', interval=Interval.in_4_hour, n_bars=5000) # 抓取 XAUUSD 4H K線
+    df_gold_1h = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_1_hour, n_bars=10000) # 抓取 Pepperstone XAUUSD 1H K線以合成各 Offset K線
     if df_gold_1h is None or df_gold_1h.empty: # 降級處理
         df_gold_1h = pd.read_csv('comex_gc1!_4h.csv') # Local fallback
 
