@@ -17,7 +17,7 @@
 input group "===== 商品設定 =====" // 商品設定群組
 // 📌 交易商品 = 圖表商品 (XAUUSD)，請將此 EA 掛載到 XAUUSD 圖表上
 // 📌 DXY 僅用於計算 Alpha 動能指標（加倉過濾），不會對 DXY 下單
-input string   InpDXYSymbol      = "DXY_U6";        // DXY 商品名稱 (僅用於讀取報價計算 Alpha，不交易此商品)
+input string   InpDXYSymbol      = "USDX";          // DXY 商品名稱 (僅用於讀取報價計算 Alpha，不交易此商品)
 input double   InpLotSize        = 0.01;             // 每筆交易手數 (主部位與加倉各用此手數)
 
 input group "===== 指標參數 =====" // 指標參數群組
