@@ -24,8 +24,8 @@ def download_data():  # 定義下載數據的函數
         except Exception as e_dxy:  # 捕捉 DXY 下載異常
             print(f"⚠️ 美元指數下載警告: {e_dxy}")  # 印出警告
 
-        try:  # 嘗試下載黃金日線
-            df_gold_d = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_daily, n_bars=5000)  # 下載黃金日線資料
+        try:  # 嘗試下載 Pepperstone XAUUSD 黃金日線
+            df_gold_d = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_daily, n_bars=5000)  # 下載 Pepperstone XAUUSD 日線資料
             if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
                 df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
                 df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
@@ -36,14 +36,14 @@ def download_data():  # 定義下載數據的函數
                     df_old_gd = pd.read_csv('comex_gc1!_daily.csv')  # 讀取舊 CSV 檔
                     df_new_gd = pd.concat([df_old_gd, df_new_gd]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
                 df_new_gd.to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
-                print("✅ 黃金期貨日線下載與合併成功")  # 印出成功提示
+                print("✅ Pepperstone XAUUSD 日線下載與合併成功")  # 印出成功提示
         except Exception as e_gd:  # 捕捉黃金日線下載異常
-            print(f"⚠️ 黃金期貨日線下載警告: {e_gd}")  # 印出警告
+            print(f"⚠️ Pepperstone XAUUSD 日線下載警告: {e_gd}")  # 印出警告
 
-        try:  # 嘗試下載 4H K線
-            df_gold_raw = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_1_hour, n_bars=10000)  # 讀取 COMEX GC1! 1H K線以合成高精確度 4H 數據
+        try:  # 嘗試下載 Pepperstone XAUUSD 4H K線
+            df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_1_hour, n_bars=10000)  # 讀取 Pepperstone XAUUSD 1H K線以合成高精確度 4H 數據
             if df_gold_raw is None or df_gold_raw.empty:  # 若 1H 未取得則回退 4H
-                df_gold_raw = tv.get_hist(symbol='GC1!', exchange='COMEX', interval=Interval.in_4_hour, n_bars=5000)  # 回退 COMEX GC1! 4H
+                df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_4_hour, n_bars=5000)  # 回退 Pepperstone XAUUSD 4H
 
             if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
@@ -63,9 +63,9 @@ def download_data():  # 定義下載數據的函數
                     df_old_4h = pd.read_csv('comex_gc1!_4h.csv')  # 讀取舊 CSV 檔
                     df_new_4h = pd.concat([df_old_4h, df_new_4h]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
                 df_new_4h.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ 黃金期貨 4H K線下載與合併成功")  # 印出成功提示
+                print("✅ Pepperstone XAUUSD 4H K線下載與合併成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
-            print(f"⚠️ 黃金期貨 4H K線下載警告: {e_g4h}")  # 印出警告
+            print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
         print(f"⚠️ 下載數據發生連線異常: {e_main}，將使用本地快取資料進行回測")  # 印出提示 warning
         print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點) 合成成功")  # 印出成功提示
