@@ -12,7 +12,7 @@ def download_data():  # 定義下載數據的函數
             df_dxy = tv.get_hist(symbol='DXY', exchange='ICEUS', interval=Interval.in_daily, n_bars=5000)  # 下載美元指數日線資料
             if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
                 df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
-                df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
+                df_dxy['datetime'] = pd.to_datetime(df_dxy['datetime'])  # 轉為 datetime 物件
                 df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
                 df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
                 df_new_dxy = df_dxy[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
@@ -28,7 +28,7 @@ def download_data():  # 定義下載數據的函數
             df_gold_d = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_daily, n_bars=5000)  # 下載 Pepperstone XAUUSD 日線資料
             if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
                 df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
-                df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
+                df_gold_d['datetime'] = pd.to_datetime(df_gold_d['datetime'])  # 轉為 datetime 物件
                 df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
                 df_new_gd = df_gold_d[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
@@ -47,10 +47,10 @@ def download_data():  # 定義下載數據的函數
 
             if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
-                df_gold_raw['datetime'] = df_gold_raw['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
+                df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-                origin_tz = pd.Timestamp('2024-01-01 00:00:00', tz='Asia/Taipei')  # 設定 00:00 (台北時間 +0h) 偏移錨點
+                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 (+0h 4H 切分) 偏移錨點
                 df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
                     'open': 'first',  # 取 4H 第一筆開盤價
                     'high': 'max',  # 取 4H 最高價
