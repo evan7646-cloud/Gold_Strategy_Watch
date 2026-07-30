@@ -219,7 +219,7 @@ def main(): # 主流程函數
         df_gold_1h = pd.read_csv('comex_gc1!_4h.csv') # Local fallback
 
     df_gold_1h = df_gold_1h.reset_index() # 重設索引
-    df_gold_1h['datetime'] = df_gold_1h['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei') # 轉台北時間
+    df_gold_1h['datetime'] = pd.to_datetime(df_gold_1h['datetime']) # 轉為標準 datetime 物件 (對齊最新 +0h 時區)
     df_gold_1h = df_gold_1h.rename(columns={'datetime': 'timestamp'}) # 欄位重命名
     
     df_gold_d = pd.read_csv('comex_gc1!_daily.csv') # 讀取日線黃金
@@ -265,7 +265,7 @@ def main(): # 主流程函數
             df_base = df_gold_1h.copy() # 複製基礎數據
             df_base.set_index('timestamp', inplace=True) # 設為索引
             
-            origin_tz = pd.Timestamp(f'2024-01-01 {offset:02d}:00:00', tz='Asia/Taipei') # 建立 offset 時間戳
+            origin_tz = pd.Timestamp(f'2024-01-01 {offset:02d}:00:00') # 建立 offset 時間戳 (對齊標準 datetime)
             rule = '4h' if tf == '4H' else '8h' # 規則名稱
             
             df_res = df_base.resample(rule, origin=origin_tz).agg({ # 重取樣
