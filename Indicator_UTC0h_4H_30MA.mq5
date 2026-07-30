@@ -11,9 +11,9 @@
 
 #property indicator_label1  "4H 30MA (+0h)" // 指標線標籤
 #property indicator_type1   DRAW_LINE // 繪製線條
-#property indicator_color1  clrOrangeRed // 改用高對比鮮艷深橘紅色 (確保白底與黑底皆極其清晰)
+#property indicator_color1  clrOrangeRed // 高對比鮮艷深橘紅色
 #property indicator_style1  STYLE_SOLID // 實線
-#property indicator_width1  3 // 線條粗細改為 3 (加粗顯眼)
+#property indicator_width1  3 // 線條粗細 3
 
 //--- 指標緩衝區
 double   BufferMA4H[]; // 4H 30MA 數據緩衝區
@@ -27,18 +27,6 @@ int OnInit()
    PlotIndexSetString(0, PLOT_LABEL, "4H 30MA (+0h Offset)"); // 設定圖例說明
    PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE); // 設定空值標誌
    return(INIT_SUCCEEDED); // 回傳成功
-}
-
-//+------------------------------------------------------------------+
-//| 判斷當前 1H K 線是否為 UTC +0h (00, 04, 08, 12, 16, 20) 新 4H 開盤 |
-//+------------------------------------------------------------------+
-bool IsUTC0hStart(datetime barTime1H)
-{
-   int gmtOffset = TimeGMTOffset(); // 讀取 MT5 伺服器與 GMT 偏移秒數
-   datetime utcTime = barTime1H - gmtOffset; // 轉為 UTC 時間
-   MqlDateTime dt;
-   TimeToStruct(utcTime, dt); // 解析時間結構
-   return (dt.hour % 4 == 0); // 判斷 UTC 小時是否為 00, 04, 08, 12, 16, 20
 }
 
 //+------------------------------------------------------------------+
@@ -58,24 +46,27 @@ int OnCalculate(const int rates_total,
    if(rates_total < 200) return 0; // K 線數量不足跳過
 
    int start = prev_calculated - 1; // 計算起始位置
-   if(start < 150) start = 150; // 防初始陣列越界
+   if(start < 120) start = 120; // 確保前 120 根有數據
 
    for(int i = start; i < rates_total; i++) // 遍歷每根 1H K 線
    {
-      // 尋找當前 1H 所在或之前的最新 +0h 4H 開盤點
+      // 尋找當前 1H (i) 所在或之前的最新 +0h 4H 開盤點 (MT5 小時為 03, 07, 11, 15, 19, 23)
       int startIdx = i;
-      while(startIdx >= 0 && !IsUTC0hStart(time[startIdx]))
+      while(startIdx >= 0)
       {
-         startIdx--;
+         MqlDateTime dt;
+         TimeToStruct(time[startIdx], dt); // 解析 MT5 K 線時間
+         if(dt.hour % 4 == 3) break; // 找到 +0h 4H 開盤點 (MT5 03,07,11,15,19,23)
+         startIdx--; // 向前移動 1 小時
       }
 
-      if(startIdx < 120) // 歷史數據不足跳過
+      if(startIdx < 120) // 前方歷史數據不足 30 根 4H (120 小時) 則跳過
       {
          BufferMA4H[i] = EMPTY_VALUE;
          continue;
       }
 
-      // startIdx - 1 為最新完結 +0h 4H 之末端 1H 收盤價
+      // startIdx - 1 即為最新完結 +0h 4H 之末端 1H 收盤價
       double sumClose = 0.0;
       for(int k = 0; k < 30; k++)
       {
@@ -86,7 +77,7 @@ int OnCalculate(const int rates_total,
             sumClose += close[0];
       }
 
-      BufferMA4H[i] = sumClose / 30.0; // 賦予指標緩衝區數據 (在 1H 圖表上即時劃出 +0h 4H 30MA 階梯線)
+      BufferMA4H[i] = sumClose / 30.0; // 計算精準對齊台北時間 +0h 之 4H 30MA
    }
 
    return(rates_total); // 回傳已計算數量
