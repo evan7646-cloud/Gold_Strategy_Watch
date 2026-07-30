@@ -417,52 +417,40 @@ bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double 
    int copied = CopyRates(_Symbol, PERIOD_H1, 0, 600, rates1H); // 從當前 K 線向後讀取 600 根 1H 數據
    if(copied < (nBars * 4 + 20)) return false; // 數據不足跳過
 
-   int foundBars = 0; // 找到之 4H 數量
-   int i = copied - 1; // 游標倒序
-
-   // 先移動游標避開當前正在變動中未完結之 1H K 線
-   while(i >= 3)
+   // 步驟 1: 尋找當前 1H (bar[0]) 所在或之前的最新 +0h 4H 開盤點
+   int startIdx = copied - 1;
+   while(startIdx >= 0)
    {
       int gmtOffset = TimeGMTOffset(); // 讀取 GMT 偏移秒數
-      datetime utcTime = rates1H[i - 3].time - gmtOffset; // 該 4H 第一根 1H 的 UTC 時間
+      datetime utcTime = rates1H[startIdx].time - gmtOffset; // 轉為 UTC 時間
       MqlDateTime dt;
       TimeToStruct(utcTime, dt); // 解析時間結構
-      if(dt.hour % 4 == 0 && (i == copied - 1 || rates1H[i].time < iTime(_Symbol, PERIOD_H1, 0))) // 找到已完結之 +0h 4H 區間末端
-      {
-         break;
-      }
-      i--;
+      if(dt.hour % 4 == 0) break; // 找到最新 +0h 4H 開盤點
+      startIdx--;
    }
 
-   // 倒序組裝完結之 +0h 4H 區間
-   while(i >= 3 && foundBars < nBars)
+   if(startIdx < nBars * 4 + 4) return false; // 數據不足跳過
+
+   // startIdx - 1 即為最新完結之 +0h 4H 的末端 1H！
+   int lastClosedEnd = startIdx - 1;
+
+   for(int k = 0; k < nBars; k++)
    {
-      int gmtOffset = TimeGMTOffset(); // 讀取 GMT 偏移秒數
-      datetime utcTime = rates1H[i - 3].time - gmtOffset; // 該 4H 第一根 1H 的 UTC 時間
-      MqlDateTime dt;
-      TimeToStruct(utcTime, dt); // 解析時間結構
+      int idx = nBars - 1 - k; // 寫入陣列索引
+      int end1H = lastClosedEnd - (k * 4); // 該 4H 末端 1H
+      int start1H = end1H - 3; // 該 4H 開頭 1H
 
-      if(dt.hour % 4 == 0) // 該 4H 第一根 1H 開盤點
+      outOpen[idx]  = rates1H[start1H].open; // 開盤價
+      outClose[idx] = rates1H[end1H].close;   // 收盤價
+      outHigh[idx]  = rates1H[start1H].high; // 最高價初始化
+      outLow[idx]   = rates1H[start1H].low;  // 最低價初始化
+      for(int m = start1H + 1; m <= end1H; m++) // 取 4 小時內極值
       {
-         int idx = nBars - 1 - foundBars; // 計算寫入陣列索引
-         outOpen[idx]  = rates1H[i - 3].open; // 開盤價
-         outClose[idx] = rates1H[i].close;    // 收盤價
-         outHigh[idx]  = rates1H[i - 3].high; // 初始化最高價
-         outLow[idx]   = rates1H[i - 3].low;  // 初始化最低價
-         for(int k = i - 2; k <= i; k++) // 尋找 4 小時內最高價與最低價
-         {
-            if(rates1H[k].high > outHigh[idx]) outHigh[idx] = rates1H[k].high; // 更新最高價
-            if(rates1H[k].low < outLow[idx])   outLow[idx]  = rates1H[k].low;  // 更新最低價
-         }
-         foundBars++; // 計數加一
-         i -= 4; // 跳過該 4H 包含的 4 根 1H
-      }
-      else
-      {
-         i--; // 向前移動 1 小時
+         if(rates1H[m].high > outHigh[idx]) outHigh[idx] = rates1H[m].high; // 最高價
+         if(rates1H[m].low < outLow[idx])   outLow[idx]  = rates1H[m].low;  // 最低價
       }
    }
-   return (foundBars == nBars); // 若成功找到指定數量回傳 true
+   return true; // 合成成功
 }
 
 //+------------------------------------------------------------------+

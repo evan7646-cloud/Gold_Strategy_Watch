@@ -62,39 +62,29 @@ int OnCalculate(const int rates_total,
 
    for(int i = start; i < rates_total; i++) // 遍歷每根 1H K 線
    {
-      double sumClose = 0.0; // 30 根完結 +0h 4H 收盤價總和
-      int count = 0; // 計數器
-      int cur = i; // 追蹤游標
-
-      // 先尋找當前 1H 所在之已完結 +0h 4H 區間末端
-      while(cur >= 3)
+      // 步驟 1: 在 i 以及之前的 1H K 線中，尋找最新一個 +0h 4H 開盤點 (即 IsUTC0hStart == true)
+      int startIdx = i;
+      while(startIdx >= 0 && !IsUTC0hStart(time[startIdx]))
       {
-         if(IsUTC0hStart(time[cur - 3])) // cur-3 為 +0h 4H 第一根 1H，則 cur 為該 4H 第四根 1H (末端)
-         {
-            break;
-         }
-         cur--;
+         startIdx--;
       }
 
-      // 倒序累加前 30 根完結 +0h 4H 之實際收盤價 (第 4 根 1H 之 close)
-      while(cur >= 3 && count < 30)
+      if(startIdx < 120) // 前方歷史數據不足 30 根 4H (120 小時) 則填 0
       {
-         if(IsUTC0hStart(time[cur - 3])) // 判定符合 +0h 4H 區間
-         {
-            sumClose += close[cur]; // 累加該 4H 之真正收盤價
-            count++; // 計數加一
-            cur -= 4; // 跳到上一個 4H 的末端 1H
-         }
-         else
-         {
-            cur--; // 移動游標
-         }
+         BufferMA4H[i] = 0.0;
+         continue;
       }
 
-      if(count == 30)
-         BufferMA4H[i] = sumClose / 30.0; // 計算精準對齊之 4H 30MA 平滑線
-      else
-         BufferMA4H[i] = 0.0; // 數據不足填 0
+      // 步驟 2: startIdx - 1 即為最新完結 +0h 4H 之收盤 K 線！
+      // 倒序累加前 30 根完結 +0h 4H 之收盤價 (每隔 4 小時向前取一次 4H 收盤價)
+      double sumClose = 0.0;
+      for(int k = 0; k < 30; k++)
+      {
+         int closeIdx = (startIdx - 1) - (k * 4); // 前推 k 個 4H 區間末端 1H
+         sumClose += close[closeIdx]; // 累加該 4H 之真正收盤價
+      }
+
+      BufferMA4H[i] = sumClose / 30.0; // 計算精準對齊台北時間 +0h 之 4H 30MA (在 MT5 03,07,11,15,19,23 時刻準時跳階)
    }
 
    return(rates_total); // 回傳已計算數量
