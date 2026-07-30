@@ -339,7 +339,7 @@ bool ClosePositionsByMagic(ulong magic)
 //+------------------------------------------------------------------+
 void ReconstructStopPrices()
 {
-   ulong mainTicket = 0, pyrTicket = 0; // 宣告票號變數
+   ulong mainTicket = 0, pyrTicket = 0; // 宣告持倉票號
    int totalEAPos = CountPositionsByEA(mainTicket, pyrTicket); // 統計當前 EA 部位
    if(totalEAPos == 0) return; // 無持倉無需重構
 
@@ -359,39 +359,81 @@ void ReconstructStopPrices()
       posType   = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE); // 讀取方向
    }
 
-   int startBarIndex = iBarShift(_Symbol, PERIOD_H4, entryTime, false); // 計算進場對應之 4H K 線索引
-   if(startBarIndex < 0) startBarIndex = 100; // 防錯保護
-
    double stopPrice = 0.0; // 停損價變數
-   for(int i = startBarIndex; i >= 1; i--) // 從進場 K 線正向重放至上一根完結 K 線
+
+   if(_Period == PERIOD_H1) // 掛載在 H1 圖表上時，完全使用合成之 +0h 4H 數據重構停損
    {
-      double h = iHigh(_Symbol, PERIOD_H4, i); // 取當時 High
-      double l = iLow(_Symbol, PERIOD_H4, i); // 取當時 Low
-      double h_prev = iHigh(_Symbol, PERIOD_H4, i + 1); // 取前 High
-      double l_prev = iLow(_Symbol, PERIOD_H4, i + 1); // 取前 Low
-
-      double atrArray[1]; // ATR 陣列
-      if(CopyBuffer(g_hATR4H, 0, i, 1, atrArray) <= 0) continue; // 讀取當時 ATR
-      double atr = atrArray[0]; // ATR 值
-
-      if(posType == POSITION_TYPE_BUY) // 多頭軌跡
+      double oBars[100], hBars[100], lBars[100], cBars[100]; // 宣告 100 根 4H 陣列
+      if(GetUTC0h4H_BarData(100, oBars, hBars, lBars, cBars)) // 精準合成 +0h 4H K 線
       {
-         double initStop = MathMin(l, l_prev) - 1.0 * atr; // 計算初始停損
-         if(stopPrice == 0.0 || initStop > stopPrice) stopPrice = initStop; // 首根賦值
-         else if(iClose(_Symbol, PERIOD_H4, i) > h_prev) // 若突破前高
+         for(int i = 2; i < 100; i++) // 正向重放歷史 4H 軌跡
          {
-            double newStop = MathMin(l, l_prev) - 1.0 * atr; // 計算新停損
-            if(newStop > stopPrice) stopPrice = newStop; // 上移停損
+            double h = hBars[i]; // 當前 High
+            double l = lBars[i]; // 當前 Low
+            double h_prev = hBars[i-1]; // 前 High
+            double l_prev = lBars[i-1]; // 前 Low
+
+            double tr = MathMax(h - l, MathMax(MathAbs(h - cBars[i-1]), MathAbs(l - cBars[i-1]))); // 真實波幅 TR
+            double atr = tr; // 軌跡估算 ATR
+
+            if(posType == POSITION_TYPE_BUY) // 多頭軌跡
+            {
+               double initStop = MathMin(l, l_prev) - 1.0 * atr; // 計算初始停損
+               if(stopPrice == 0.0 || initStop > stopPrice) stopPrice = initStop; // 首根賦值
+               else if(cBars[i] > h_prev) // 突破前高
+               {
+                  double newStop = MathMin(l, l_prev) - 1.0 * atr; // 計算新停損
+                  if(newStop > stopPrice) stopPrice = newStop; // 向上移動停損
+               }
+            }
+            else // 空頭軌跡
+            {
+               double initStop = MathMax(h, h_prev) + 1.0 * atr; // 計算初始停損
+               if(stopPrice == 0.0 || initStop < stopPrice) stopPrice = initStop; // 首根賦值
+               else if(cBars[i] < l_prev) // 跌破前低
+               {
+                  double newStop = MathMax(h, h_prev) + 1.0 * atr; // 計算新停損
+                  if(newStop < stopPrice) stopPrice = newStop; // 向下移動停損
+               }
+            }
          }
       }
-      else // 空頭軌跡
+   }
+   else // 原 H4 圖表相容模式
+   {
+      int startBarIndex = iBarShift(_Symbol, PERIOD_H4, entryTime, false); // 計算進場對應之 4H K 線索引
+      if(startBarIndex < 0) startBarIndex = 100; // 防錯保護
+
+      for(int i = startBarIndex; i >= 1; i--) // 從進場 K 線正向重放至上一根完結 K 線
       {
-         double initStop = MathMax(h, h_prev) + 1.0 * atr; // 計算初始停損
-         if(stopPrice == 0.0 || initStop < stopPrice) stopPrice = initStop; // 首根賦值
-         else if(iClose(_Symbol, PERIOD_H4, i) < l_prev) // 若跌破前低
+         double h = iHigh(_Symbol, PERIOD_H4, i); // 取當時 High
+         double l = iLow(_Symbol, PERIOD_H4, i); // 取當時 Low
+         double h_prev = iHigh(_Symbol, PERIOD_H4, i + 1); // 取前 High
+         double l_prev = iLow(_Symbol, PERIOD_H4, i + 1); // 取前 Low
+
+         double atrArray[1]; // ATR 陣列
+         if(CopyBuffer(g_hATR4H, 0, i, 1, atrArray) <= 0) continue; // 讀取當時 ATR
+         double atr = atrArray[0]; // ATR 值
+
+         if(posType == POSITION_TYPE_BUY) // 多頭軌跡
          {
-            double newStop = MathMax(h, h_prev) + 1.0 * atr; // 計算新停損
-            if(newStop < stopPrice) stopPrice = newStop; // 下移停損
+            double initStop = MathMin(l, l_prev) - 1.0 * atr; // 計算初始停損
+            if(stopPrice == 0.0 || initStop > stopPrice) stopPrice = initStop; // 首根賦值
+            else if(iClose(_Symbol, PERIOD_H4, i) > h_prev) // 若突破前高
+            {
+               double newStop = MathMin(l, l_prev) - 1.0 * atr; // 計算新停損
+               if(newStop > stopPrice) stopPrice = newStop; // 上移停損
+            }
+         }
+         else // 空頭軌跡
+         {
+            double initStop = MathMax(h, h_prev) + 1.0 * atr; // 計算初始停損
+            if(stopPrice == 0.0 || initStop < stopPrice) stopPrice = initStop; // 首根賦值
+            else if(iClose(_Symbol, PERIOD_H4, i) < l_prev) // 若跌破前低
+            {
+               double newStop = MathMax(h, h_prev) + 1.0 * atr; // 計算新停損
+               if(newStop < stopPrice) stopPrice = newStop; // 下移停損
+            }
          }
       }
    }
