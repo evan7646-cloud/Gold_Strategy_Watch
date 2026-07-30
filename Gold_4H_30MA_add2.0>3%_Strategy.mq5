@@ -5,17 +5,16 @@
 //+------------------------------------------------------------------+
 #property copyright "Gold 4H 30MA Strategy" // 版權宣告
 #property version   "2.00" // 版本號
-#property strict // 嚴格模式
-#property description "黃金 4H 30MA 多空混合策略 EA (+2h UTC 02:00 偏移)" // EA 描述文字
-#property description "基於日線趨勢過濾 + 4H 30MA動能 + 移動停損 + Alpha10強勢加碼機制" // 描述第二行
+#property description "黃金 4H 30MA 多空混合策略 EA (+0h UTC 00:00 偏移對齊)" // EA 描述文字
+#property description "建議掛載至 XAUUSD 1H 圖表以精準在 UTC 00, 04, 08, 12, 16, 20 時區觸發" // 描述第二行
 
 #include <Trade/Trade.mqh> // 引入 MQL5 標準交易函式庫
 
 //+------------------------------------------------------------------+
 //| 輸入參數 (Input Parameters)                                       |
 //+------------------------------------------------------------------+
-input group "===== 商品設定 =====" // 商品設定群組
-// 📌 交易商品 = 圖表商品 (XAUUSD)，請將此 EA 掛載到 XAUUSD 4H 圖表上
+input group "===== 商品與圖表設定 =====" // 商品與圖表設定群組
+// 📌 建議將此 EA 掛載到 XAUUSD 1H 圖表，程式會自動於 UTC 00, 04, 08, 12, 16, 20 時間點觸發 +0h 4H 邏輯
 // 📌 DXY 僅用於計算 Alpha 動能指標（加倉過濾），不會對 DXY 下單
 input string   InpDXYSymbol      = "USDX";          // DXY 商品名稱 (僅用於讀取報價計算 Alpha，不交易此商品)
 input double   InpLotSize        = 0.01;             // 每筆交易手數 (主部位與加倉各用此手數)
@@ -576,6 +575,18 @@ void ProcessNew4HBar()
 }
 
 //+------------------------------------------------------------------+
+//| 判斷當前 1H K 線是否為 UTC +0h (00, 04, 08, 12, 16, 20) 新 4H 開盤 |
+//+------------------------------------------------------------------+
+bool IsNewUTC4HBar(datetime current1HTime)
+{
+   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器的 GMT 偏移秒數 (例: 夏令為 10800 秒 = 3 小時)
+   datetime utcTime = current1HTime - gmtOffset; // 轉換為標準 UTC 時間
+   MqlDateTime dt; // 宣告時間結構
+   TimeToStruct(utcTime, dt); // 解析時間結構
+   return (dt.hour % 4 == 0); // 判斷 UTC 小時是否為 00, 04, 08, 12, 16, 20 (開盤點)
+}
+
+//+------------------------------------------------------------------+
 //| 主 Tick 處理函數 (OnTick)                                         |
 //+------------------------------------------------------------------+
 void OnTick()
@@ -588,13 +599,17 @@ void OnTick()
       UpdateDailyFilters(); // 更新日線趨勢過濾器
    }
 
-   //--- 檢查是否有新 4H K 線收盤
-   datetime current4HTime = iTime(_Symbol, PERIOD_H4, 0); // 取得當前 4H K 線開盤時間
-   if(current4HTime != g_LastBar4H) // 若跳新 4H K 線
+   //--- 雙相容模式：優先支持 H1 圖表之 UTC +0h 觸發，亦相容原 H4 圖表觸發
+   datetime triggerTime = (_Period == PERIOD_H1) ? iTime(_Symbol, PERIOD_H1, 0) : iTime(_Symbol, PERIOD_H4, 0); // 取得當前開盤時間
+   if(triggerTime != g_LastBar4H) // 若跳新 K 線
    {
-      g_LastBar4H = current4HTime; // 更新 4H 時間紀錄
-      ProcessNew4HBar(); // 執行 4H 交易邏輯
-      SavePersistentState(); // 儲存狀態
+      bool isTrigger = (_Period == PERIOD_H1) ? IsNewUTC4HBar(triggerTime) : true; // 若掛在 H1 圖表上則精準依 UTC +0h 點位觸發
+      if(isTrigger) // 滿足觸發條件
+      {
+         g_LastBar4H = triggerTime; // 更新 4H 時間紀錄
+         ProcessNew4HBar(); // 執行 4H 交易邏輯
+         SavePersistentState(); // 儲存狀態
+      }
    }
 }
 //+------------------------------------------------------------------+

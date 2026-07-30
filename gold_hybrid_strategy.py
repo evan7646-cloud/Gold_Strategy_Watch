@@ -50,8 +50,8 @@ def download_data():  # 定義下載數據的函數
                 df_gold_raw['datetime'] = df_gold_raw['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 轉台北時間
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-                origin_tz = pd.Timestamp('2024-01-01 02:00:00', tz='Asia/Taipei')  # 設定 02:00 (UTC 02:00) 偏移錨點
-                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+2h offset)
+                origin_tz = pd.Timestamp('2024-01-01 00:00:00', tz='Asia/Taipei')  # 設定 00:00 (台北時間 +0h) 偏移錨點
+                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
                     'open': 'first',  # 取 4H 第一筆開盤價
                     'high': 'max',  # 取 4H 最高價
                     'low': 'min',  # 取 4H 最低價
@@ -59,11 +59,8 @@ def download_data():  # 定義下載數據的函數
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
                 df_new_4h = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
-                if os.path.exists('comex_gc1!_4h.csv'):  # 檢查是否存在舊檔案
-                    df_old_4h = pd.read_csv('comex_gc1!_4h.csv')  # 讀取舊 CSV 檔
-                    df_new_4h = pd.concat([df_old_4h, df_new_4h]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
                 df_new_4h.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ Pepperstone XAUUSD 4H K線下載與合併成功")  # 印出成功提示
+                print("✅ Pepperstone XAUUSD 4H K線 (+0h 台北時間開盤) 合成成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
@@ -410,7 +407,7 @@ def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
     with open('strategy_results.json', 'w', encoding='utf-8') as f:  # 寫入 JSON
         json.dump(output_data, f, ensure_ascii=False, indent=2)  # dump 寫檔
 
-    print(f"🎉 4H 30MA (+2h Offset) 策略回測完成！ (累積淨損益: {total_pnl:.2f} 點, 總交易數: {len(all_trades)} 筆, 最大回撤: {max_drawdown:.2f} 點)")  # 印出提示
+    print(f"🎉 4H 30MA (+0h Offset) 策略回測完成！ (累積淨損益: {total_pnl:.2f} 點, 總交易數: {len(all_trades)} 筆, 最大回撤: {max_drawdown:.2f} 點)")  # 印出提示
 
 if __name__ == '__main__':  # 入口點
     run_backtest()  # 執行
