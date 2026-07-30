@@ -41,26 +41,39 @@ def download_data():  # 定義下載數據的函數
             print(f"⚠️ Pepperstone XAUUSD 日線下載警告: {e_gd}")  # 印出警告
 
         try:  # 嘗試下載 Pepperstone XAUUSD 4H K線
-            df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_1_hour, n_bars=10000)  # 讀取 Pepperstone XAUUSD 1H K線以合成高精確度 4H 數據
-            if df_gold_raw is None or df_gold_raw.empty:  # 若 1H 未取得則回退 4H
-                df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_4_hour, n_bars=5000)  # 回退 Pepperstone XAUUSD 4H
+            df_hist_4h = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_4_hour, n_bars=5000)  # 下載 Pepperstone XAUUSD 長期 4H K線 (涵蓋 2023 至今)
+            df_gold_raw = tv.get_hist(symbol='XAUUSD', exchange='PEPPERSTONE', interval=Interval.in_1_hour, n_bars=10000)  # 讀取 Pepperstone XAUUSD 1H K線以合成高精確度 +0h 數據
 
-            if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
+            df_merged_4h = None
+            if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查 1H 資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
                 df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
                 origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 (+0h 4H 切分) 偏移錨點
-                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
-                    'open': 'first',  # 取 4H 第一筆開盤價
-                    'high': 'max',  # 取 4H 最高價
-                    'low': 'min',  # 取 4H 最低價
-                    'close': 'last'  # 取 4H 最後收盤價
+                df_resampled = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
+                    'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'
                 }).dropna().reset_index()  # 去除空值並重設索引
-                df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
-                df_new_4h = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
-                df_new_4h.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ Pepperstone XAUUSD 4H K線 (+0h 台北時間開盤) 合成成功")  # 印出成功提示
+                df_merged_4h = df_resampled[['timestamp', 'open', 'high', 'low', 'close']]  # 近期 1H 合成結果
+
+            if df_hist_4h is not None and not df_hist_4h.empty:  # 若有長期 4H 歷史
+                df_hist_4h = df_hist_4h.reset_index()  # 重設索引
+                df_hist_4h['datetime'] = pd.to_datetime(df_hist_4h['datetime'])  # 轉為 datetime
+                df_hist_4h['timestamp'] = df_hist_4h['datetime'] + pd.Timedelta(hours=2)  # 對齊 +0h 時間戳
+                df_hist_clean = df_hist_4h[['timestamp', 'open', 'high', 'low', 'close']]  # 整理歷史欄位
+                if df_merged_4h is not None:  # 合併歷史與近期
+                    min_recent = df_merged_4h['timestamp'].min()  # 取近期最小時間
+                    df_old = df_hist_clean[df_hist_clean['timestamp'] < min_recent]  # 篩選舊歷史
+                    df_merged_4h = pd.concat([df_old, df_merged_4h]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
+                else:
+                    df_merged_4h = df_hist_clean  # 僅用歷史
+
+            if df_merged_4h is not None and not df_merged_4h.empty:  # 篩選自 2024-07-01 開始之完整 2 年數據
+                df_merged_4h = df_merged_4h[df_merged_4h['timestamp'] >= '2024-07-01'].reset_index(drop=True)  # 篩選 2024-07-01 起始
+                df_save = df_merged_4h.copy()  # 複製資料
+                df_save['timestamp'] = df_save['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化字串
+                df_save.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存至 comex_gc1!_4h.csv
+                print("✅ Pepperstone XAUUSD 完整 2 年 4H K線 (+0h 2024-07 起) 合成並儲存成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
