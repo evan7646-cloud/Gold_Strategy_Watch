@@ -400,23 +400,122 @@ void ReconstructStopPrices()
 }
 
 //+------------------------------------------------------------------+
+//| 從 1H 數據精準合成 UTC +0h (00, 04, 08, 12, 16, 20) 之 N 根 4H K線數據 |
+//+------------------------------------------------------------------+
+bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double &outLow[], double &outClose[])
+{
+   ArrayResize(outOpen, nBars);
+   ArrayResize(outHigh, nBars);
+   ArrayResize(outLow, nBars);
+   ArrayResize(outClose, nBars);
+
+   MqlRates rates1H[600]; // 宣告 1H 數據陣列
+   int copied = CopyRates(_Symbol, PERIOD_H1, 0, 600, rates1H); // 從當前 K 線向後讀取 600 根 1H 數據
+   if(copied < (nBars * 4 + 20)) return false; // 數據不足跳過
+
+   int foundBars = 0; // 找到之 4H 數量
+   int i = copied - 1; // 游標倒序
+
+   // 先移動游標避開當前正在變動中未完結之 1H K 線
+   while(i >= 3)
+   {
+      int gmtOffset = TimeGMTOffset(); // 讀取 GMT 偏移秒數
+      datetime utcTime = rates1H[i - 3].time - gmtOffset; // 該 4H 第一根 1H 的 UTC 時間
+      MqlDateTime dt;
+      TimeToStruct(utcTime, dt); // 解析時間結構
+      if(dt.hour % 4 == 0 && (i == copied - 1 || rates1H[i].time < iTime(_Symbol, PERIOD_H1, 0))) // 找到已完結之 +0h 4H 區間末端
+      {
+         break;
+      }
+      i--;
+   }
+
+   // 倒序組裝完結之 +0h 4H 區間
+   while(i >= 3 && foundBars < nBars)
+   {
+      int gmtOffset = TimeGMTOffset(); // 讀取 GMT 偏移秒數
+      datetime utcTime = rates1H[i - 3].time - gmtOffset; // 該 4H 第一根 1H 的 UTC 時間
+      MqlDateTime dt;
+      TimeToStruct(utcTime, dt); // 解析時間結構
+
+      if(dt.hour % 4 == 0) // 該 4H 第一根 1H 開盤點
+      {
+         int idx = nBars - 1 - foundBars; // 計算寫入陣列索引
+         outOpen[idx]  = rates1H[i - 3].open; // 開盤價
+         outClose[idx] = rates1H[i].close;    // 收盤價
+         outHigh[idx]  = rates1H[i - 3].high; // 初始化最高價
+         outLow[idx]   = rates1H[i - 3].low;  // 初始化最低價
+         for(int k = i - 2; k <= i; k++) // 尋找 4 小時內最高價與最低價
+         {
+            if(rates1H[k].high > outHigh[idx]) outHigh[idx] = rates1H[k].high; // 更新最高價
+            if(rates1H[k].low < outLow[idx])   outLow[idx]  = rates1H[k].low;  // 更新最低價
+         }
+         foundBars++; // 計數加一
+         i -= 4; // 跳過該 4H 包含的 4 根 1H
+      }
+      else
+      {
+         i--; // 向前移動 1 小時
+      }
+   }
+   return (foundBars == nBars); // 若成功找到指定數量回傳 true
+}
+
+//+------------------------------------------------------------------+
 //| 處理新完結之 4H K 線邏輯 (ProcessNew4HBar)                       |
 //+------------------------------------------------------------------+
 void ProcessNew4HBar()
 {
-   double ma4hArray[1], atr4hArray[1]; // 宣告 4H 快取陣列
-   if(CopyBuffer(g_hMA4H, 0, 1, 1, ma4hArray) <= 0) return; // 讀取已完結 bar[1] 4H MA
-   if(CopyBuffer(g_hATR4H, 0, 1, 1, atr4hArray) <= 0) return; // 讀取已完結 bar[1] 4H ATR
+   double c1, c2, h1, l1, h2, l2, ma4h, atr4h; // 宣告核心指標與 OHLC 變數
 
-   double c1 = iClose(_Symbol, PERIOD_H4, 1); // 讀取 bar[1] 收盤價
-   double c2 = iClose(_Symbol, PERIOD_H4, 2); // 讀取 bar[2] 收盤價
-   double h1 = iHigh(_Symbol, PERIOD_H4, 1);  // 讀取 bar[1] 最高價
-   double l1 = iLow(_Symbol, PERIOD_H4, 1);   // 讀取 bar[1] 最低價
-   double h2 = iHigh(_Symbol, PERIOD_H4, 2);  // 讀取 bar[2] 最高價
-   double l2 = iLow(_Symbol, PERIOD_H4, 2);   // 讀取 bar[2] 最低價
+   if(_Period == PERIOD_H1) // 掛載在 H1 圖表上時，完全從 1H 數據精準合成 UTC +0h 4H 四價與指標
+   {
+      double oBars[35], hBars[35], lBars[35], cBars[35]; // 宣告 35 根 4H 暫存陣列
+      if(!GetUTC0h4H_BarData(35, oBars, hBars, lBars, cBars)) // 精準合成 35 根 +0h 4H K 線
+      {
+         Print("⚠️ [+0h 數據合成中] 等待 1H 數據加載..."); // 日誌
+         return; // 未就緒跳過
+      }
 
-   double ma4h = ma4hArray[0]; // 4H MA 值
-   double atr4h = atr4hArray[0]; // 4H ATR 值
+      c1 = cBars[34]; // bar[1] 完結 4H 收盤價
+      c2 = cBars[33]; // bar[2] 完結 4H 收盤價
+      h1 = hBars[34]; // bar[1] 完結 4H 最高價
+      l1 = lBars[34]; // bar[1] 完結 4H 最低價
+      h2 = hBars[33]; // bar[2] 完結 4H 最高價
+      l2 = lBars[33]; // bar[2] 完結 4H 最低價
+
+      // 計算 30MA
+      double sumClose = 0; // 30MA 累積和
+      for(int k = 5; k < 35; k++) sumClose += cBars[k]; // 累加前 30 根 4H 收盤價
+      ma4h = sumClose / 30.0; // 4H 30MA 值
+
+      // 計算 14ATR
+      double sumTR = 0; // 14ATR 累積和
+      for(int k = 21; k < 35; k++) // 累加前 14 根 4H 真實波幅 TR
+      {
+         double tr1 = hBars[k] - lBars[k]; // 高低差
+         double tr2 = MathAbs(hBars[k] - cBars[k-1]); // 高前收差
+         double tr3 = MathAbs(lBars[k] - cBars[k-1]); // 低前收差
+         double tr  = MathMax(tr1, MathMax(tr2, tr3)); // 取最大值為 TR
+         sumTR += tr; // 累加 TR
+      }
+      atr4h = sumTR / 14.0; // 4H 14ATR 值
+   }
+   else // 原 H4 圖表相容模式
+   {
+      double ma4hArray[1], atr4hArray[1]; // 宣告 4H 快取陣列
+      if(CopyBuffer(g_hMA4H, 0, 1, 1, ma4hArray) <= 0) return; // 讀取已完結 bar[1] 4H MA
+      if(CopyBuffer(g_hATR4H, 0, 1, 1, atr4hArray) <= 0) return; // 讀取已完結 bar[1] 4H ATR
+
+      c1 = iClose(_Symbol, PERIOD_H4, 1); // 讀取 bar[1] 收盤價
+      c2 = iClose(_Symbol, PERIOD_H4, 2); // 讀取 bar[2] 收盤價
+      h1 = iHigh(_Symbol, PERIOD_H4, 1);  // 讀取 bar[1] 最高價
+      l1 = iLow(_Symbol, PERIOD_H4, 1);   // 讀取 bar[1] 最低價
+      h2 = iHigh(_Symbol, PERIOD_H4, 2);  // 讀取 bar[2] 最高價
+      l2 = iLow(_Symbol, PERIOD_H4, 2);   // 讀取 bar[2] 最低價
+      ma4h = ma4hArray[0]; // 4H MA 值
+      atr4h = atr4hArray[0]; // 4H ATR 值
+   }
 
    bool sig_long_4h = (c1 > ma4h) && (c1 > c2); // 計算 4H 多頭觸發訊號 (Close > 30MA 且 動能 > 0)
 
