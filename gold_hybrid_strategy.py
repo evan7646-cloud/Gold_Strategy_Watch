@@ -15,8 +15,12 @@ def download_data():  # 定義下載數據的函數
                 df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
                 df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
                 df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
-                df_dxy[['timestamp', 'open', 'high', 'low', 'close']].to_csv('iceus_dxy_daily.csv', index=False)  # 儲存美元指數日線 CSV
-                print("✅ 美元指數日線下載成功")  # 印出成功提示
+                df_new_dxy = df_dxy[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
+                if os.path.exists('iceus_dxy_daily.csv'):  # 檢查是否存在舊檔案
+                    df_old_dxy = pd.read_csv('iceus_dxy_daily.csv')  # 讀取舊 CSV 檔
+                    df_new_dxy = pd.concat([df_old_dxy, df_new_dxy]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
+                df_new_dxy.to_csv('iceus_dxy_daily.csv', index=False)  # 儲存美元指數日線 CSV
+                print("✅ 美元指數日線下載與合併成功")  # 印出成功提示
         except Exception as e_dxy:  # 捕捉 DXY 下載異常
             print(f"⚠️ 美元指數下載警告: {e_dxy}")  # 印出警告
 
@@ -27,8 +31,12 @@ def download_data():  # 定義下載數據的函數
                 df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')  # 將時間轉為台北時間
                 df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
-                df_gold_d[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
-                print("✅ 黃金期貨日線下載成功")  # 印出成功提示
+                df_new_gd = df_gold_d[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
+                if os.path.exists('comex_gc1!_daily.csv'):  # 檢查是否存在舊檔案
+                    df_old_gd = pd.read_csv('comex_gc1!_daily.csv')  # 讀取舊 CSV 檔
+                    df_new_gd = pd.concat([df_old_gd, df_new_gd]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
+                df_new_gd.to_csv('comex_gc1!_daily.csv', index=False)  # 儲存黃金日線 CSV
+                print("✅ 黃金期貨日線下載與合併成功")  # 印出成功提示
         except Exception as e_gd:  # 捕捉黃金日線下載異常
             print(f"⚠️ 黃金期貨日線下載警告: {e_gd}")  # 印出警告
 
@@ -50,8 +58,12 @@ def download_data():  # 定義下載數據的函數
                     'close': 'last'  # 取 4H 最後收盤價
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_gold_4h['timestamp'] = df_gold_4h['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
-                df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ 黃金期貨 4H K線 (對齊 backtest_4h_8h_full_metrics +3354.61 點) 合成成功")  # 印出成功提示
+                df_new_4h = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
+                if os.path.exists('comex_gc1!_4h.csv'):  # 檢查是否存在舊檔案
+                    df_old_4h = pd.read_csv('comex_gc1!_4h.csv')  # 讀取舊 CSV 檔
+                    df_new_4h = pd.concat([df_old_4h, df_new_4h]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重
+                df_new_4h.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
+                print("✅ 黃金期貨 4H K線下載與合併成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ 黃金期貨 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
@@ -259,12 +271,11 @@ def simulate_direction(df, is_long_only=True):  # 定義單向策略模擬子引
     return active_positions, completed_trades, annotations  # 回傳單向數據
 
 def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
+    download_data()  # 無條件執行最新數據下載與合併
+
     gold_daily_file = 'comex_gc1!_daily.csv'  # 指定黃金日線檔
     dxy_daily_file = 'iceus_dxy_daily.csv'  # 指定美元指數檔
     gold_4h_file = 'comex_gc1!_4h.csv'  # 指定 4H 檔
-
-    if not os.path.exists(gold_daily_file) or not os.path.exists(dxy_daily_file) or not os.path.exists(gold_4h_file):  # 檢查檔案
-        download_data()  # 自動下載
 
     gold_d = pd.read_csv(gold_daily_file)  # 讀取黃金日線
     dxy_d = pd.read_csv(dxy_daily_file)  # 讀取 DXY 日線

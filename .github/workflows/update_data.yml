@@ -40,7 +40,11 @@ jobs:
       - name: 📊 Check if data changed  # 檢查資料是否有更新
         id: check_changes
         run: |
-          git diff --quiet strategy_results.json && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          if [ -n "$(git status --porcelain strategy_results.json comex_gc1!_4h.csv comex_gc1!_daily.csv iceus_dxy_daily.csv)" ]; then  # 檢查資料檔是否有變動
+            echo "changed=true" >> $GITHUB_OUTPUT  # 標記有變動
+          else  # 若無變動
+            echo "changed=false" >> $GITHUB_OUTPUT  # 標記無變動
+          fi  # 判斷結束
 
       - name: 💾 Commit and push updated data  # 若有更新則 commit 並推送
         if: steps.check_changes.outputs.changed == 'true'  # 只有在資料真的有變動時才 commit

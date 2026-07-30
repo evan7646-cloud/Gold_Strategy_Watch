@@ -9,10 +9,8 @@ venv/
 # Debug / 診斷腳本
 debug_*.py
 
-# 大型原始 CSV（由 GitHub Actions 自動更新，不放進 repo）
+# 原始 CSV（由 GitHub Actions 自動更新）
 comex_gc1!_8h.csv
-comex_gc1!_daily.csv
-iceus_dxy_daily.csv
 fred_dfii10_daily.csv
 
 # 回測輸出（不需要版控）
