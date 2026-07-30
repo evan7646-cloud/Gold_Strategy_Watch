@@ -421,11 +421,9 @@ bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double 
    int startIdx = copied - 1;
    while(startIdx >= 0)
    {
-      int gmtOffset = TimeGMTOffset(); // 讀取 GMT 偏移秒數
-      datetime utcTime = rates1H[startIdx].time - gmtOffset; // 轉為 UTC 時間
       MqlDateTime dt;
-      TimeToStruct(utcTime, dt); // 解析時間結構
-      if(dt.hour % 4 == 0) break; // 找到最新 +0h 4H 開盤點
+      TimeToStruct(rates1H[startIdx].time, dt); // 解析 MT5 K 線時間
+      if(dt.hour % 4 == 3) break; // 直接匹配 MT5 03,07,11,15,19,23 點
       startIdx--;
    }
 
@@ -666,15 +664,13 @@ void ProcessNew4HBar()
 }
 
 //+------------------------------------------------------------------+
-//| 判斷當前 1H K 線是否為 UTC +0h (00, 04, 08, 12, 16, 20) 新 4H 開盤 |
+//| 判斷當前 1H K 線是否為台北時間 +0h (00, 04, 08, 12, 16, 20) 新 4H 開盤 |
 //+------------------------------------------------------------------+
 bool IsNewUTC4HBar(datetime current1HTime)
 {
-   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器的 GMT 偏移秒數 (例: 夏令為 10800 秒 = 3 小時)
-   datetime utcTime = current1HTime - gmtOffset; // 轉換為標準 UTC 時間
    MqlDateTime dt; // 宣告時間結構
-   TimeToStruct(utcTime, dt); // 解析時間結構
-   return (dt.hour % 4 == 0); // 判斷 UTC 小時是否為 00, 04, 08, 12, 16, 20 (開盤點)
+   TimeToStruct(current1HTime, dt); // 解析當前 1H K 線時間
+   return (dt.hour % 4 == 3); // 判斷 MT5 小時是否為 03, 07, 11, 15, 19, 23 (對應台北時間 08, 12, 16, 20, 00, 04)
 }
 
 //+------------------------------------------------------------------+
