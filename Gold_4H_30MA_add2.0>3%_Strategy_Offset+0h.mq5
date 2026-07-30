@@ -5,8 +5,8 @@
 //+------------------------------------------------------------------+
 #property copyright "Gold 4H 30MA Strategy (+0h Offset)" // 版權宣告
 #property version   "2.00" // 版本號
-#property description "黃金 4H 30MA 多空混合策略 EA (+0h UTC 00:00 偏移對齊)" // EA 描述文字
-#property description "建議掛載至 XAUUSD 1H 圖表以精準在 UTC 00, 04, 08, 12, 16, 20 時區觸發" // 描述第二行
+#property description "黃金 4H 30MA 多空混合策略 EA (+0h 台北時間 00:00 偏移對齊)" // EA 描述文字
+#property description "建議掛載至 XAUUSD 1H 圖表以精準在台北時間 00, 04, 08, 12, 16, 20 觸發" // 描述第二行
 
 #include <Trade/Trade.mqh> // 引入 MQL5 標準交易函式庫
 
@@ -14,7 +14,7 @@
 //| 輸入參數 (Input Parameters)                                       |
 //+------------------------------------------------------------------+
 input group "===== 商品與圖表設定 =====" // 商品與圖表設定群組
-// 📌 建議將此 EA 掛載到 XAUUSD 1H 圖表，程式會自動於 UTC 00, 04, 08, 12, 16, 20 時間點觸發 +0h 4H 邏輯
+// 📌 建議將此 EA 掛載到 XAUUSD 1H 圖表，程式會自動於台北時間 00, 04, 08, 12, 16, 20 時間點觸發 +0h 4H 邏輯
 // 📌 DXY 僅用於計算 Alpha 動能指標（加倉過濾），不會對 DXY 下單
 input string   InpDXYSymbol      = "USDX";          // DXY 商品名稱 (僅用於讀取報價計算 Alpha，不交易此商品)
 input double   InpLotSize        = 0.10;             // 每筆交易手數 (預設改為 0.1 手，主部位與加倉各用此手數)
