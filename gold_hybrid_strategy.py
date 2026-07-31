@@ -56,8 +56,11 @@ def download_data():  # 定義下載數據的函數
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_save = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].copy()  # 取出標準五欄位
                 df_save['timestamp'] = df_save['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
+                if os.path.exists('comex_gc1!_4h.csv'):  # 若本地已有歷史 4H CSV
+                    df_old_4h = pd.read_csv('comex_gc1!_4h.csv')  # 讀取舊 CSV 檔 (含 2024-07 歷史)
+                    df_save = pd.concat([df_old_4h, df_save]).drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)  # 合併去重增量更新
                 df_save.to_csv('comex_gc1!_4h.csv', index=False)  # 儲存 4H K線 CSV
-                print("✅ Pepperstone XAUUSD 純淨 +0h 4H K線合成與儲存成功")  # 印出成功提示
+                print("✅ Pepperstone XAUUSD 完整 2 年 +0h 4H K線增量合併與儲存成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
