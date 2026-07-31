@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => { // 網頁 DOM 內容載入
 
 async function fetchData() { // 非同步讀取策略 JSON 數據函數
     try { // 嘗試執行讀取與解析
-        const response = await fetch('strategy_results.json'); // 向伺服器請求 strategy_results.json
+        const response = await fetch('strategy_results.json?v=' + new Date().getTime()); // 向伺服器請求 strategy_results.json (加上時間戳防止瀏覽器快取舊資料)
         if (!response.ok) throw new Error('無法讀取數據'); // 檢查 HTTP 回應狀態
         globalData = await response.json(); // 解析 JSON 物件並給全域變數
         
