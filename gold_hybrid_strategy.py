@@ -337,9 +337,9 @@ def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
 
     all_active = pos_l + pos_s  # 聯集當前部位
     all_trades = trades_l + trades_s  # 聯集所有交易
-    all_trades = sorted(all_trades, key=lambda x: str(x['entry_date']))  # 按進場時間排序
+    all_trades = sorted(all_trades, key=lambda x: str(x['exit_date']))  # 按平倉出場時間升冪排序 (舊到新)
     for idx, t in enumerate(all_trades):  # 重設交易 ID
-        t['trade_id'] = idx + 1  # 重新賦予流水號
+        t['trade_id'] = idx + 1  # 重新賦予順序流水號
 
     all_ann = ann_l + ann_s  # 聯集圖表標記
 

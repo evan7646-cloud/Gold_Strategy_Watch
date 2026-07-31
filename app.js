@@ -207,8 +207,8 @@ function renderEquityChart(completedTrades, goldChartData) { // 繪製策略累�
     const equityChartEl = document.getElementById('equity-chart'); // 取得 Equity Chart DOM
     if (!equityChartEl || !completedTrades || completedTrades.length === 0) return; // 檢查 DOM 與資料是否存在
     
-    // 依據 trade_id 升冪排序 (舊到新) 以正確累加損益
-    const sortedTrades = [...completedTrades].sort((a, b) => a.trade_id - b.trade_id);
+    // 依據平倉時間 exit_date 升冪排序 (舊到新)，確保 X 軸時間折線永不倒退
+    const sortedTrades = [...completedTrades].sort((a, b) => new Date(a.exit_date) - new Date(b.exit_date));
     
     const timestamps = [goldChartData.timestamps[0]]; // 起始時間點
     const equityValues = [0]; // 起始權益為 0
@@ -217,19 +217,25 @@ function renderEquityChart(completedTrades, goldChartData) { // 繪製策略累�
     let currentCumPnl = 0; // 累積損益計數器
     let maxCumPnl = 0; // 最高累積損益
     
-    sortedTrades.forEach(t => { // 遍歷計算每一筆結算交易
-        currentCumPnl += t.pnl_points; // 累加點數損益
+    sortedTrades.forEach((t, idx) => { // 遍歷計算每一筆結算交易
+        const pnl = (typeof t.pnl_points === 'number') ? t.pnl_points : parseFloat(t.pnl_points || 0); // 確保點數為數值
+        currentCumPnl += pnl; // 累加點數損益
         if (currentCumPnl > maxCumPnl) maxCumPnl = currentCumPnl; // 更新歷史最高 PnL
         
         timestamps.push(t.exit_date); // 記錄平倉時間戳
         equityValues.push(parseFloat(currentCumPnl.toFixed(2))); // 記錄目前累積 PnL
         
-        const isWin = (t.pnl_points >= 0); // 判斷個單是否獲利
+        const isWin = (pnl >= 0); // 判斷個單是否獲利
+        const pnlStr = (isWin ? '+' : '') + pnl.toFixed(2) + ' pts'; // 格式化當筆損益
+        const cumStr = (currentCumPnl >= 0 ? '+' : '') + currentCumPnl.toFixed(2) + ' pts'; // 格式化累積權益
+        const colorHex = isWin ? '#00e676' : '#ff1744'; // 獲利亮綠，虧損亮紅
+        
+        // 修正 Tooltip: 使用 Plotly 標準相容之 font 標籤，確保「當筆損益」清晰顯示
         hoverTexts.push(
-            `<b>交易 #${t.trade_id} (${t.type})</b><br>` +
+            `<b>交易 #${t.trade_id || (idx + 1)} (${t.type})</b><br>` +
             `出場時間: ${t.exit_date}<br>` +
-            `當筆損益: <span style="color:${isWin ? '#00e676' : '#ff1744'}">${isWin ? '+' : ''}${t.pnl_points.toFixed(2)} pts</span><br>` +
-            `<b>累積權益: ${currentCumPnl >= 0 ? '+' : ''}${currentCumPnl.toFixed(2)} pts</b>`
+            `當筆損益: <font color="${colorHex}"><b>${pnlStr}</b></font><br>` +
+            `<b>累積權益: ${cumStr}</b>`
         ); // 設定 Hover 文字
     });
     
