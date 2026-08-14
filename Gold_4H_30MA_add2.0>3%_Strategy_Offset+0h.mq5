@@ -562,6 +562,15 @@ void ProcessNew4HBar()
       ReconstructStopPrices(); // 重構停損
    }
 
+   //--- 孤兒加碼單安全防護：若主部位已被手動平倉或止損離場，但加碼單仍孤立存在
+   if(mainTicket == 0 && pyrTicket > 0) // 檢測是否出現孤兒加碼單
+   {
+      PrintFormat("⚠️ [孤兒加碼單防護] 主部位已平倉但加碼單 [Ticket=%d] 仍存在，緊急平倉孤兒加碼單！", pyrTicket); // 印出日誌
+      ClosePositionsByMagic(InpMagicPyramid); // 清空孤兒加碼部位
+      g_PyramidStopPrice = 0.0; // 清空加倉停損價
+      SavePersistentState(); // 保存狀態
+   }
+
    //--- CASE A: 當前持有【主多單】
    if(mainTicket > 0 && PositionSelectByTicket(mainTicket) && PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
    {
@@ -710,9 +719,11 @@ void ProcessNew4HBar()
 //+------------------------------------------------------------------+
 bool IsNewUTC4HBar(datetime current1HTime)
 {
+   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器之 GMT 動態偏移秒數 (夏令 GMT+3 為 10800 秒，冬令 GMT+2 為 7200 秒)
+   datetime utcTime = current1HTime - gmtOffset; // 將 MT5 伺服器時間動態轉換為標準 UTC 時間
    MqlDateTime dt; // 宣告時間結構
-   TimeToStruct(current1HTime, dt); // 解析當前 1H K 線時間
-   return (dt.hour % 4 == 3); // 判斷 MT5 小時是否為 03, 07, 11, 15, 19, 23 (對應台北時間 08, 12, 16, 20, 00, 04)
+   TimeToStruct(utcTime, dt); // 解析 UTC 時間結構
+   return (dt.hour % 4 == 0); // 判斷 UTC 小時是否為 00, 04, 08, 12, 16, 20 (即台北時間 08, 12, 16, 20, 00, 04 精準觸發)
 }
 
 //+------------------------------------------------------------------+
