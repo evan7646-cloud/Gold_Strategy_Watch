@@ -85,6 +85,10 @@ function renderStatusCards(status, metrics, goldChartData) { // 渲染狀態卡�
     document.getElementById('total-trades-val').textContent = metrics.total_trades; // 顯示總筆數
     document.getElementById('win-rate-val').textContent = `${metrics.win_rate}%`; // 顯示勝率
     document.getElementById('mdd-val').textContent = `${metrics.max_drawdown} pts`; // 顯示最大回撤
+    
+    const currDD = metrics.current_drawdown !== undefined ? metrics.current_drawdown : 0; // 取得當前即時回撤點數
+    const currDDPct = metrics.current_drawdown_pct !== undefined ? metrics.current_drawdown_pct : 0; // 取得當前即時回撤百分比
+    document.getElementById('current-dd-val').textContent = `${currDD} pts (${currDDPct}%)`; // 顯示目前即時回撤與百分比
 } // renderStatusCards 結束
 
 function renderGoldChart(chartData, annotations) { // 繪製 XAUUSD 4H Plotly 主圖表 (開放雙軸拉伸與重置)

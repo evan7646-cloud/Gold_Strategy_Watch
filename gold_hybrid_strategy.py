@@ -371,12 +371,18 @@ def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
     pnl_series = pd.Series([t['pnl_points'] for t in all_trades])  # 損益序列
     cum_pnl = pnl_series.cumsum()  # 累積損益
     max_drawdown = round((cum_pnl.cummax() - cum_pnl).max(), 2) if len(cum_pnl) > 0 else 0  # 最大回撤點數
+    peak_pnl = float(cum_pnl.max()) if len(cum_pnl) > 0 else 0.0  # 歷史最高權益點
+    current_pnl = float(cum_pnl.iloc[-1]) if len(cum_pnl) > 0 else 0.0  # 當前累積權益點
+    current_drawdown = round(peak_pnl - current_pnl, 2)  # 當前即時回撤點数
+    current_drawdown_pct = round(current_drawdown / peak_pnl * 100, 2) if peak_pnl > 0 else 0.0  # 當前即時回撤百分比
 
     metrics = {  # 績效指標
         'total_trades': len(all_trades),  # 總筆數
         'total_pnl_points': round(total_pnl, 2),  # 累積點數
         'win_rate': win_rate,  # 勝率
         'max_drawdown': max_drawdown,  # 最大回撤
+        'current_drawdown': current_drawdown,  # 當前即時回撤點數
+        'current_drawdown_pct': current_drawdown_pct,  # 當前即時回撤百分比
     }  # 指標結束
 
     gold_chart_data = {  # 黃金圖表數據
