@@ -50,14 +50,14 @@ def download_data():  # 定義下載數據的函數
                 df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 (+0h 4H 切分) 偏移錨點
-                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
+                origin_tz = pd.Timestamp('2024-01-01 02:00:00')  # 設定 02:00 (+2h 4H 切分，100% 精準對齊 MT5 伺服器 H4 圖表點位)
+                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+2h offset 對齊 MT5)
                     'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_save = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].copy()  # 取出標準五欄位
                 df_save['timestamp'] = df_save['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')  # 格式化時間字串
-                df_save.to_csv('comex_gc1!_4h.csv', index=False)  # 直接更新覆蓋為純淨的 Pepperstone 1H 合成 4H K線檔
-                print("✅ Pepperstone XAUUSD 完整 2 年 +0h 4H K線精準合成與儲存成功 (無舊檔殘留)")  # 印出成功提示
+                df_save.to_csv('comex_gc1!_4h.csv', index=False)  # 直接更新覆蓋為純淨對齊 MT5 的 Pepperstone 1H 合成 4H K線檔
+                print("✅ Pepperstone XAUUSD 完整 2 年 +2h 4H K線精準對齊 MT5 合成與儲存成功")  # 印出成功提示
         except Exception as e_g4h:  # 捕捉 4H K線下載異常
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
