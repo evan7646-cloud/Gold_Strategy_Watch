@@ -139,15 +139,15 @@ void LoadPersistentState() // 讀取 EA 持久化狀態
 //| 取得有效的 DXY 美元指數商品名稱 (同步最終版多重搜尋)                |
 //+------------------------------------------------------------------+
 string GetValidDXYSymbol() // 自動搜尋經紀商相符 DXY 代號
-{ // 函數開頭
+{
    if(SymbolSelect(InpDXYSymbol, true)) return InpDXYSymbol; // 指定商品存在則使用
-   string candidates[] = {"DXY", "USDX", "USDOLLAR", "DXY_U6", "USDINDEX", "DXY.ecn", "DXY!"}; // 備選清單
+   string candidates[] = {"DXY.cash", "DXY", "USDX", "USDOLLAR", "DXY_U6", "USDINDEX", "DXY.ecn", "DXY!", "USDX.cash"}; // 備選清單 (加入 FTMO 之 DXY.cash)
    for(int i = 0; i < ArraySize(candidates); i++) // 遍歷備選清單
-   { // 迴圈開頭
+   {
       if(SymbolSelect(candidates[i], true)) return candidates[i]; // 找到可用即回傳
-   } // 迴圈結束
+   }
    return InpDXYSymbol; // 找不到則回傳預設值
-} // 函數結束
+}
 
 //+------------------------------------------------------------------+
 //| 統計當前商品與本 EA MagicNumber 之持倉 (CountPositionsByEA)        |
@@ -374,8 +374,8 @@ bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double 
    int copied = CopyRates(_Symbol, PERIOD_H1, 0, 600, rates1H); // 讀取 600 根 1H 數據
    if(copied < (nBars * 4 + 20)) return false; // 數據不足跳過
 
-   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器之 GMT 動態偏移秒數 (夏令 GMT+3 10800 秒，冬令 GMT+2 7200 秒)
-   int startIdx = copied - 1; // 搜尋起始索引
+   int gmtOffset = (int)(TimeCurrent() - TimeGMT()); // 正確取得券商伺服器之 GMT 動態偏移秒數 (修正原本使用用戶電腦本地時區之 Bug)
+   int startIdx = copied - 2; // 從已完結之 bar[1] 1H 開始倒搜 (避免包含尚未完結之當前 bar[0])
    while(startIdx >= 0) // 向後尋找 +0h 4H 結尾 hour % 4 == 3
    { // 迴圈開頭
       datetime utcTime = rates1H[startIdx].time - gmtOffset; // 動態轉為標準 UTC 時間 (解決夏令 GMT+3 與冬令 GMT+2 時差 bug)
@@ -387,7 +387,7 @@ bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double 
 
    if(startIdx < nBars * 4 + 4) return false; // 數據不足跳過
 
-   int lastClosedEnd = startIdx - 1; // 最新完結之 +0h 4H 末端 1H
+   int lastClosedEnd = startIdx; // startIdx (dt.hour % 4 == 3) 即為最新完結之 +0h 4H 末端 1H
    for(int k = 0; k < nBars; k++) // 遍歷合成 N 根 4H K線
    { // 迴圈開頭
       int idx = nBars - 1 - k; // 寫入陣列索引
@@ -741,7 +741,7 @@ void ProcessNew4HBar() // 新 4H K 線完結邏輯
 //+------------------------------------------------------------------+
 bool IsNewUTC4HBar(datetime current1HTime) // 判斷是否為 UTC +0h 4H 新 K 線
 { // 函數開頭
-   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器之 GMT 動態偏移秒數
+   int gmtOffset = (int)(TimeCurrent() - TimeGMT()); // 正確取得券商伺服器之 GMT 動態偏移秒數 (修正原本使用用戶電腦本地時區之 Bug)
    datetime utcTime = current1HTime - gmtOffset; // 動態轉為標準 UTC 時間
    MqlDateTime dt; // 時間結構體
    TimeToStruct(utcTime, dt); // 解析 UTC 時間
