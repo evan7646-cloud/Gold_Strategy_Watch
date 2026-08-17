@@ -78,9 +78,21 @@ function renderStatusCards(status, metrics, goldChartData) { // 渲染狀態卡�
         `).join(''); // 生成持倉清單 HTML
     } // 部位判斷結束
     
+    // 計算即時未實現損益點數總和
+    const unrealizedSum = (status.active_positions && status.active_positions.length > 0) 
+        ? status.active_positions.reduce((acc, p) => acc + (p.unrealized_pnl || 0), 0) : 0; // 加總當前持倉未實現損益
+    const closedPnl = metrics.total_pnl_points || 0; // 已平倉累積點數
+    const realtimeTotalPnl = metrics.realtime_total_pnl_points !== undefined ? metrics.realtime_total_pnl_points : (closedPnl + unrealizedSum); // 即時總權益累積點數
+    
     const totalPnlEl = document.getElementById('total-pnl-val'); // 取得總盈虧 DOM
-    totalPnlEl.textContent = `${metrics.total_pnl_points >= 0 ? '+' : ''}${metrics.total_pnl_points.toFixed(2)} pts`; // 顯示點數
-    totalPnlEl.className = 'card-main-val ' + (metrics.total_pnl_points >= 0 ? 'positive-val' : 'negative-val'); // 套用配色
+    totalPnlEl.textContent = `${realtimeTotalPnl >= 0 ? '+' : ''}${realtimeTotalPnl.toFixed(2)} pts`; // 顯示即時總權益點數
+    totalPnlEl.className = 'card-main-val ' + (realtimeTotalPnl >= 0 ? 'positive-val' : 'negative-val'); // 套用配色
+    
+    const closedEl = document.getElementById('closed-pnl-val'); // 取得已平倉點數 DOM
+    if (closedEl) closedEl.textContent = `${closedPnl >= 0 ? '+' : ''}${closedPnl.toFixed(2)} pts`; // 顯示已平倉點數
+    
+    const unrealizedEl = document.getElementById('unrealized-pnl-val'); // 取得未實現點數 DOM
+    if (unrealizedEl) unrealizedEl.textContent = `${unrealizedSum >= 0 ? '+' : ''}${unrealizedSum.toFixed(2)} pts`; // 顯示未實現點數
     
     document.getElementById('total-trades-val').textContent = metrics.total_trades; // 顯示總筆數
     document.getElementById('win-rate-val').textContent = `${metrics.win_rate}%`; // 顯示勝率

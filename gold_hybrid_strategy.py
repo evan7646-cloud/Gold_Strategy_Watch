@@ -376,9 +376,14 @@ def run_backtest():  # 定義對齊 4H 30MA 之回測主函數
     current_drawdown = round(peak_pnl - current_pnl, 2)  # 當前即時回撤點数
     current_drawdown_pct = round(current_drawdown / peak_pnl * 100, 2) if peak_pnl > 0 else 0.0  # 當前即時回撤百分比
 
+    unrealized_pnl_sum = sum([p['unrealized_pnl'] for p in current_status['active_positions']]) if current_status.get('active_positions') else 0.0  # 當前活躍持倉未實現損益
+    realtime_total_pnl = round(total_pnl + unrealized_pnl_sum, 2)  # 即時總權益累積點數 (已平倉 + 未實現)
+
     metrics = {  # 績效指標
         'total_trades': len(all_trades),  # 總筆數
-        'total_pnl_points': round(total_pnl, 2),  # 累積點數
+        'total_pnl_points': round(total_pnl, 2),  # 已平倉累積點數
+        'unrealized_pnl_points': round(unrealized_pnl_sum, 2),  # 當前未實現損益點數
+        'realtime_total_pnl_points': realtime_total_pnl,  # 即時總權益累積點數
         'win_rate': win_rate,  # 勝率
         'max_drawdown': max_drawdown,  # 最大回撤
         'current_drawdown': current_drawdown,  # 當前即時回撤點數

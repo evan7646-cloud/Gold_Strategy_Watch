@@ -62,11 +62,13 @@
                 </div> <!-- 持倉細節結束 -->
             </div> <!-- 卡片 3 結束 -->
 
-            <!-- 卡片 4：策略歷史總累積盈虧與勝率 -->
+            <!-- 卡片 4：策略即時總累積盈虧與勝率 -->
             <div class="card glass-card highlight-card"> <!-- 亮色強調卡片容器 -->
-                <div class="card-title">🏆 策略總績效 Summary</div> <!-- 卡片小標題 -->
-                <div class="card-main-val positive-val" id="total-pnl-val">+0.00 pts</div> <!-- 累積點數損益 -->
+                <div class="card-title">🏆 策略即時總績效 Realtime Summary</div> <!-- 卡片小標題 -->
+                <div class="card-main-val positive-val" id="total-pnl-val">+0.00 pts</div> <!-- 即時總權益累積點數損益 (已平倉 + 未實現) -->
                 <div class="card-detail"> <!-- 勝率與回撤細節 -->
+                    <span>已平倉點數: <strong id="closed-pnl-val" style="color: #4fc3f7;">+0.00 pts</strong></span> <!-- 已平倉累積點數 -->
+                    <span>未實現點數: <strong id="unrealized-pnl-val" style="color: #81c784;">0.00 pts</strong></span> <!-- 當前未實現點數 -->
                     <span>總交易: <strong id="total-trades-val">0</strong> 筆</span> <!-- 總交易筆數 -->
                     <span>勝率: <strong id="win-rate-val">0%</strong></span> <!-- 勝率 -->
                     <span>最大回撤: <strong id="mdd-val">0 pts</strong></span> <!-- 最大回撤 -->
