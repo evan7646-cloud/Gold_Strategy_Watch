@@ -460,12 +460,14 @@ bool GetUTC0h4H_BarData(int nBars, double &outOpen[], double &outHigh[], double 
    if(copied < (nBars * 4 + 20)) return false; // 數據不足跳過
 
    // 步驟 1: 尋找當前 1H (bar[0]) 所在或之前的最新 +0h 4H 開盤點
+   int gmtOffset = TimeGMTOffset(); // 讀取當前 MT5 伺服器之 GMT 動態偏移秒數 (夏令 GMT+3 10800 秒，冬令 GMT+2 7200 秒)
    int startIdx = copied - 1;
    while(startIdx >= 0)
    {
+      datetime utcTime = rates1H[startIdx].time - gmtOffset; // 將 MT5 伺服器時間動態轉為標準 UTC 時間 (解決夏令冬令 1 小時時差 bug)
       MqlDateTime dt;
-      TimeToStruct(rates1H[startIdx].time, dt); // 解析 MT5 K 線時間
-      if(dt.hour % 4 == 3) break; // 直接匹配 MT5 03,07,11,15,19,23 點
+      TimeToStruct(utcTime, dt); // 解析標準 UTC 時間結構
+      if(dt.hour % 4 == 3) break; // 精準動態匹配 UTC 03,07,11,15,19,23 點 (+0h 4H K線末端)
       startIdx--;
    }
 
