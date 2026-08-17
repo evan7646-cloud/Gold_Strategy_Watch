@@ -62,7 +62,7 @@ def download_data():  # 定義下載數據的函數
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
         print(f"⚠️ 下載數據發生連線異常: {e_main}，將使用本地快取資料進行回測")  # 印出提示 warning
-        print("✅ 黃金期貨 4H K線 (UTC 02:00 錨點) 合成成功")  # 印出成功提示
+        print("✅ Pepperstone XAUUSD 現貨 4H K線 (+0h 錨點) 合成成功")  # 印出成功提示
 
 def calculate_atr(df, period=14):  # 定義計算真實波幅均值 ATR 的函數
     high = df['high']  # 取得最高價序列
