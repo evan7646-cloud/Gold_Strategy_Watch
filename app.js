@@ -298,6 +298,25 @@ function renderDXYChart(dxyData) { // 繪製 DXY 美元指數圖表 (解鎖 Y �
     Plotly.newPlot('dxy-chart', [dxyLineTrace, dxyMa20Trace, dxyMa60Trace], layout, { responsive: true, scrollZoom: true, displayModeBar: true }); // 渲染 DXY 圖表
 } // renderDXYChart 結束
 
+function formatMT5Time(dateStr) { // 將 UTC 時間轉為 MT5 伺服器時間 (GMT+3 夏令 / GMT+2 冬令) 顯示
+    if (!dateStr) return '-'; // 空值回傳槓麻
+    try {
+        const d = new Date(dateStr.replace(/-/g, '/')); // 解析日期字串
+        const month = d.getMonth() + 1; // 取得月份
+        const isDST = (month >= 3 && month <= 10); // 簡化判定夏令時間 (3~10月 GMT+3)
+        const offsetHours = isDST ? 3 : 2; // 時區偏移小時
+        d.setHours(d.getHours() + offsetHours); // 加上時區偏移
+        
+        const m = String(d.getMonth() + 1).padStart(2, '0'); // 月
+        const day = String(d.getDate()).padStart(2, '0'); // 日
+        const hh = String(d.getHours()).padStart(2, '0'); // 時
+        const mm = String(d.getMinutes()).padStart(2, '0'); // 分
+        return `${m}/${day} ${hh}:${mm} <span style="font-size:0.75rem; color:#787b86;">(MT5)</span>`; // 回傳格式化字串
+    } catch(e) {
+        return dateStr;
+    }
+} // formatMT5Time 結束
+
 function renderTradesTable() { // 渲染歷史交易紀錄數據表格函數
     const tbody = document.getElementById('trades-tbody'); // 取得表格 Body
     tbody.innerHTML = ''; // 清空內容
@@ -316,6 +335,9 @@ function renderTradesTable() { // 渲染歷史交易紀錄數據表格函數
             
             if (isChecked) tr.classList.add('active-row'); // 若已勾選則套用高亮背景
             
+            const entryMT5 = formatMT5Time(t.entry_date); // 轉為 MT5 時間
+            const exitMT5 = formatMT5Time(t.exit_date); // 轉為 MT5 時間
+            
             tr.innerHTML = `
                 <td style="text-align: center;" onclick="event.stopPropagation();">
                     <input type="checkbox" class="trade-checkbox" data-id="${t.trade_id}" ${isChecked ? 'checked' : ''}>
@@ -323,9 +345,9 @@ function renderTradesTable() { // 渲染歷史交易紀錄數據表格函數
                 <td>#${t.trade_id}</td>
                 <td><span class="${t.type === 'Long' ? 'badge-long' : 'badge-short'}">${t.type}</span></td>
                 <td><span class="${t.is_pyramid ? 'badge-pyr' : 'badge-main'}">${t.is_pyramid ? '加碼部位' : '主部位'}</span></td>
-                <td>${t.entry_date}</td>
+                <td>${entryMT5}<br><small style="color:#787b86;">${t.entry_date}</small></td>
                 <td>$${t.entry_price.toFixed(2)}</td>
-                <td>${t.exit_date}</td>
+                <td>${exitMT5}<br><small style="color:#787b86;">${t.exit_date}</small></td>
                 <td>$${t.exit_price.toFixed(2)}</td>
                 <td>$${t.stop_price ? t.stop_price.toFixed(2) : '-'}</td>
                 <td class="${isProfit ? 'positive-val' : 'negative-val'}">${isProfit ? '+' : ''}${t.pnl_points.toFixed(2)}</td>
