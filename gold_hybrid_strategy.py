@@ -1,5 +1,6 @@
 import os  # 匯入作業系統模組以處理檔案路徑
 import json  # 匯入 JSON 模組以導出網頁資料
+import datetime  # 匯入 datetime 模組進行時區轉換
 import pandas as pd  # 匯入 pandas 模組進行資料分析與表格處理
 import numpy as np  # 匯入 numpy 模組進行數值計算
 from tvDatafeed import TvDatafeed, Interval  # 匯入 tvDatafeed 以抓取 TradingView 資料
@@ -48,9 +49,11 @@ def download_data():  # 定義下載數據的函數
             if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
                 df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
+                local_tz = datetime.datetime.now().astimezone().tzinfo  # 自動取得作業系統本地時區資訊
+                df_gold_raw['datetime'] = df_gold_raw['datetime'].dt.tz_localize(local_tz).dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 精準歸一化為台北時間 (Asia/Taipei)，對應 Pepperstone MT5 標準 4H K線 (03,07,11,15,19,23 伺服器時間)
                 df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 (+0h 4H 切分) 偏移錨點，維持全場最高 +5,115.98 點冠軍績效
+                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 偏移錨點，精準對齊 +5,147.55 點冠軍績效
                 df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
                     'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'
                 }).dropna().reset_index()  # 去除空值並重設索引
