@@ -14,6 +14,8 @@ def download_data():  # 定義下載數據的函數
             if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
                 df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
                 df_dxy['datetime'] = pd.to_datetime(df_dxy['datetime'])  # 轉為 datetime 物件
+                local_tz = datetime.datetime.now().astimezone().tzinfo  # 自動取得作業系統本地時區資訊
+                df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize(local_tz).dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 歸一化為台北時間 (Asia/Taipei)，防止 GitHub Actions UTC 產生週日日期點與錯位
                 df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
                 df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
                 df_new_dxy = df_dxy[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
@@ -30,6 +32,8 @@ def download_data():  # 定義下載數據的函數
             if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
                 df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
                 df_gold_d['datetime'] = pd.to_datetime(df_gold_d['datetime'])  # 轉為 datetime 物件
+                local_tz = datetime.datetime.now().astimezone().tzinfo  # 自動取得作業系統本地時區資訊
+                df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize(local_tz).dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 歸一化為台北時間 (Asia/Taipei)，對齊 MT5 日線標準
                 df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
                 df_new_gd = df_gold_d[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
