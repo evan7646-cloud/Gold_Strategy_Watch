@@ -14,7 +14,6 @@ def download_data():  # 定義下載數據的函數
             if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
                 df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
                 df_dxy['datetime'] = pd.to_datetime(df_dxy['datetime'])  # 轉為 datetime 物件
-                df_dxy['datetime'] = df_dxy['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 將 TradingView 原生 UTC 時間正確轉換為台北時間 (Asia/Taipei)
                 df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
                 df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
                 df_new_dxy = df_dxy[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
@@ -31,8 +30,6 @@ def download_data():  # 定義下載數據的函數
             if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
                 df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
                 df_gold_d['datetime'] = pd.to_datetime(df_gold_d['datetime'])  # 轉為 datetime 物件
-                local_tz = datetime.datetime.now().astimezone().tzinfo  # 自動取得作業系統本地時區資訊
-                df_gold_d['datetime'] = df_gold_d['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 將 TradingView 原生 UTC 時間正確轉換為台北時間 (Asia/Taipei)
                 df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
                 df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
                 df_new_gd = df_gold_d[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
@@ -52,8 +49,7 @@ def download_data():  # 定義下載數據的函數
             if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
                 df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
-                df_gold_raw['datetime'] = df_gold_raw['datetime'].dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei').dt.tz_localize(None)  # 將 TradingView 原生 UTC 時間轉換為台北時間 (Asia/Taipei)
-                df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
+                df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 直接將 datetime 設為標準時間 timestamp
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
                 origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 偏移錨點，精準對齊 +5,147.55 點冠軍績效
                 df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
