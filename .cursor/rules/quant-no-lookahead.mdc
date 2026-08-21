@@ -1,0 +1,18 @@
+---
+description: 量化交易訊號與特徵必須用已收盤K線，嚴禁前瞻偏誤與全域標準化
+globs: "**/*.{py,mq5,mq4,ipynb}"
+alwaysApply: false
+---
+
+# 訊號與數據完整性 (No Look-ahead Bias)
+
+計算特徵、指標（如 EMA 通道、RSI、Z-Score、ATR）時，所有訊號判定必須使用 `shift(1)` 或已收盤 K 線：
+
+```python
+df['ema_fast'] = df['close'].ewm(span=20).mean().shift(1)  # 使用前一根已收盤K棒計算快速EMA，嚴防未來數據洩漏
+df['ema_slow'] = df['close'].ewm(span=60).mean().shift(1)  # 使用前一根已收盤K棒計算慢速EMA，嚴防未來數據洩漏
+```
+
+- 嚴禁在未收盤（即時變動中）的 Bar 上使用收盤價做前瞻撮合。
+- 特徵標準化（Normalization / Standardization）必須使用滾動窗口（Rolling Window），嚴禁使用全域母體均值或標準差。
+- MQL5 對應：訊號用已收盤 bar（通常 `shift=1` / `iClose(..., 1)`），不要用當根尚未收盤的 `close[0]` 做進場判定。

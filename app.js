@@ -298,14 +298,14 @@ function renderDXYChart(dxyData) { // 繪製 DXY 美元指數圖表 (解鎖 Y �
     Plotly.newPlot('dxy-chart', [dxyLineTrace, dxyMa20Trace, dxyMa60Trace], layout, { responsive: true, scrollZoom: true, displayModeBar: true }); // 渲染 DXY 圖表
 } // renderDXYChart 結束
 
-function formatMT5Time(dateStr) { // 將 UTC 時間轉為 MT5 伺服器時間 (GMT+3 夏令 / GMT+2 冬令) 顯示
+function formatMT5Time(dateStr) { // 將台北時間 (Asia/Taipei, UTC+8) 精準轉為 MT5 伺服器時間 (UTC+3 夏令 / UTC+2 冬令) 顯示
     if (!dateStr) return '-'; // 空值回傳槓麻
     try {
-        const d = new Date(dateStr.replace(/-/g, '/')); // 解析日期字串
+        const d = new Date(dateStr.replace(/-/g, '/')); // 解析台北時間字串
         const month = d.getMonth() + 1; // 取得月份
-        const isDST = (month >= 3 && month <= 10); // 簡化判定夏令時間 (3~10月 GMT+3)
-        const offsetHours = isDST ? 3 : 2; // 時區偏移小時
-        d.setHours(d.getHours() + offsetHours); // 加上時區偏移
+        const isDST = (month >= 3 && month <= 10); // 簡化判定夏令時間 (3~10月 MT5 為 UTC+3)
+        const diffHours = isDST ? -5 : -6; // 台北時間 (UTC+8) 轉 MT5 時間：夏令扣 5 小時 (8-5=3)，冬令扣 6 小時 (8-6=2)
+        d.setHours(d.getHours() + diffHours); // 扣除時差轉換為 MT5 時間
         
         const m = String(d.getMonth() + 1).padStart(2, '0'); // 月
         const day = String(d.getDate()).padStart(2, '0'); // 日
