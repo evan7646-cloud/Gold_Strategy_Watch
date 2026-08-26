@@ -9,13 +9,17 @@ def download_data():  # 定義下載數據的函數
     print("正在檢查並下載最新 K 線數據...")  # 印出下載提示訊息
     try:  # 嘗試初始化與下載
         tv = TvDatafeed()  # 初始化 TradingView 匿名客戶端實例
+        local_utc_offset = datetime.datetime.now().astimezone().utcoffset()  # 取得本機 UTC 偏移量 (UTC+8 → 8:00:00, UTC+0 → 0:00:00)
+        utc8_offset = datetime.timedelta(hours=8)  # 定義台北時間 (UTC+8) 的固定偏移量
+        tz_correction = utc8_offset - local_utc_offset  # 計算從本機時區到 UTC+8 的修正量 (UTC+0 機器 → +8h, UTC+8 機器 → 0h)
         try:  # 嘗試下載 DXY 日線
             df_dxy = tv.get_hist(symbol='DXY', exchange='ICEUS', interval=Interval.in_daily, n_bars=5000)  # 下載美元指數日線資料
             if df_dxy is not None and not df_dxy.empty:  # 檢查美元指數資料是否成功取得
                 df_dxy = df_dxy.reset_index()  # 重設索引以取出 datetime 欄位
                 df_dxy['datetime'] = pd.to_datetime(df_dxy['datetime'])  # 轉為 datetime 物件
+                df_dxy['datetime'] = df_dxy['datetime'] + tz_correction  # 修正為 UTC+8 以確保日期歸屬一致 (CI UTC+0 機器會 +8h)
                 df_dxy = df_dxy.rename(columns={'datetime': 'timestamp'})  # 重新命名時間欄位為 timestamp
-                df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串
+                df_dxy['timestamp'] = df_dxy['timestamp'].dt.strftime('%Y-%m-%d')  # 將日線時間格式化為年月日字串 (UTC+8 日期)
                 df_new_dxy = df_dxy[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
                 if os.path.exists('iceus_dxy_daily.csv'):  # 檢查是否存在舊檔案
                     df_old_dxy = pd.read_csv('iceus_dxy_daily.csv')  # 讀取舊 CSV 檔
@@ -30,8 +34,9 @@ def download_data():  # 定義下載數據的函數
             if df_gold_d is not None and not df_gold_d.empty:  # 檢查黃金日線資料是否成功取得
                 df_gold_d = df_gold_d.reset_index()  # 重設索引取出時間欄位
                 df_gold_d['datetime'] = pd.to_datetime(df_gold_d['datetime'])  # 轉為 datetime 物件
+                df_gold_d['datetime'] = df_gold_d['datetime'] + tz_correction  # 修正為 UTC+8 以確保日期歸屬一致
                 df_gold_d = df_gold_d.rename(columns={'datetime': 'timestamp'})  # 重新命名欄位
-                df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串
+                df_gold_d['timestamp'] = df_gold_d['timestamp'].dt.strftime('%Y-%m-%d')  # 格式化日期字串 (UTC+8 日期)
                 df_new_gd = df_gold_d[['timestamp', 'open', 'high', 'low', 'close']]  # 取出標準五欄位
                 if os.path.exists('comex_gc1!_daily.csv'):  # 檢查是否存在舊檔案
                     df_old_gd = pd.read_csv('comex_gc1!_daily.csv')  # 讀取舊 CSV 檔
@@ -49,10 +54,11 @@ def download_data():  # 定義下載數據的函數
             if df_gold_raw is not None and not df_gold_raw.empty:  # 檢查資料是否成功取得
                 df_gold_raw = df_gold_raw.reset_index()  # 重設索引
                 df_gold_raw['datetime'] = pd.to_datetime(df_gold_raw['datetime'])  # 轉為 datetime 物件
-                df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 直接將 datetime 設為標準時間 timestamp
+                df_gold_raw['datetime'] = df_gold_raw['datetime'] + tz_correction  # 修正為 UTC+8 以統一日期歸屬 (與日線 merge 一致)
+                df_gold_raw = df_gold_raw.rename(columns={'datetime': 'timestamp'})  # 重新命名為 timestamp (此時為 UTC+8)
                 df_gold_raw.set_index('timestamp', inplace=True)  # 設為索引以利重取樣
-                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # 設定 00:00 偏移錨點，精準對齊 +5,147.55 點冠軍績效
-                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (+0h offset)
+                origin_tz = pd.Timestamp('2024-01-01 00:00:00')  # UTC+8 的 00:00 錨點 → 邊界 00,04,08,12,16,20 (UTC+8) = 16,20,00,04,08,12 (UTC+0)，績效最優
+                df_gold_4h = df_gold_raw.resample('4h', origin=origin_tz).agg({  # 重取樣合成 4H K線 (UTC+8 座標，實質 UTC+0 邊界)
                     'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'
                 }).dropna().reset_index()  # 去除空值並重設索引
                 df_save = df_gold_4h[['timestamp', 'open', 'high', 'low', 'close']].copy()  # 取出標準五欄位
@@ -63,7 +69,6 @@ def download_data():  # 定義下載數據的函數
             print(f"⚠️ Pepperstone XAUUSD 4H K線下載警告: {e_g4h}")  # 印出警告
     except Exception as e_main:  # 捕捉整體連線異常
         print(f"⚠️ 下載數據發生連線異常: {e_main}，將使用本地快取資料進行回測")  # 印出提示 warning
-        print("✅ Pepperstone XAUUSD 現貨 4H K線 (+0h 錨點) 合成成功")  # 印出成功提示
 
 def calculate_atr(df, period=14):  # 定義計算真實波幅均值 ATR 的函數
     high = df['high']  # 取得最高價序列
